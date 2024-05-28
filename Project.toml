@@ -1,0 +1,22 @@
+name = "FastPowerFlow"
+uuid = "c32744f1-403b-4af7-9195-1da907387c09"
+authors = ["mtanneau3 <mtanneau3@gatech.edu>"]
+version = "0.1.0"
+
+[deps]
+BasicLU = "f55c55da-c227-4c78-8e30-b72a48476979"
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+CUDSS = "45b445bb-4962-46a0-9369-b4df9d0f772e"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Gurobi = "2e9cd046-0924-5485-92f1-d5272153d98b"
+JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
+KLU = "ef3ab10e-7fda-4108-b977-705223b18434"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MKL = "33e6dc65-8f57-5167-99aa-e5a354878fb2"
+PGLib = "07a8691f-3d11-4330-951b-3c50f98338be"
+PowerModels = "c36e90e8-916a-50a6-bd94-075b64ef4655"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+SuiteSparse = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
