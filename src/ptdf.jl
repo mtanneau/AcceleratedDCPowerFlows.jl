@@ -1,19 +1,21 @@
-struct PTDF{T}
+abstract type AbstractPTDF end
+
+struct FullPTDF{T} <: AbstractPTDF
     N::Int  # number of buses
     E::Int  # number of branches
 
     matrix::Matrix{T}  # PTDF matrix
 end
 
-function PTDF(network)
+function FullPTDF(network)
     N = length(network["bus"])
     E = length(network["branch"])
     matrix = calc_basic_ptdf_matrix(network)
 
-    return PTDF(N, E, matrix)
+    return FullPTDF(N, E, matrix)
 end
 
-struct LazyPTDF{TF}
+struct LazyPTDF{TF} <: AbstractPTDF
     N::Int  # number of buses
     E::Int  # number of branches
     islack::Int  # Index of slack bus
