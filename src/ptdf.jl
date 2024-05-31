@@ -21,7 +21,7 @@ struct LazyPTDF{TF} <: AbstractPTDF
     islack::Int  # Index of slack bus
 
     A::SparseMatrixCSC{Float64,Int}  # incidence matrix
-    B::SparseMatrixCSC{Float64,Int}  # branch susceptance matrix
+    b::Vector{Float64}  # branch susceptances
     BA::SparseMatrixCSC{Float64,Int}  # B*A
     AtBA::SparseMatrixCSC{Float64,Int}  # AᵀBA
 
@@ -39,13 +39,14 @@ function LazyPTDF(network; solver::Symbol=:klu)
         calc_branch_y(network["branch"]["$e"])[2]
         for e in 1:E
     ]
-    B = sparse(Diagonal(b))
+    B = Diagonal(b)
     BA = B * A
     S = AtBA = A' * BA
     ref_idx = reference_bus(network)["bus_i"]
     S[ref_idx, :] .= 0.0
     S[:, ref_idx] .= 0.0
     S[ref_idx, ref_idx] = -1.0;  # to enable cholesky
+    S = -S
 
     if solver == :lu
         F = lu(S)
@@ -65,7 +66,7 @@ function LazyPTDF(network; solver::Symbol=:klu)
         error("Invalid linear solver: only lu, klu, ldlt are supported")
     end
 
-    return LazyPTDF(N, E, ref_idx, A, B, BA, AtBA, F)
+    return LazyPTDF(N, E, ref_idx, A, b, BA, AtBA, F)
 end
 
 """
@@ -79,16 +80,16 @@ Namely, `pf` is computed as `pf = BA * (F \\ pg)`, where `F` is a factorization
 function compute_flow!(pf, pg, Φ::LazyPTDF)
     θ = Φ.F \ pg
     θ[Φ.islack, :] .= 0  # slack voltage angle is zero
-    mul!(pf, Φ.BA, θ)
+    mul!(pf, Φ.BA, θ, -one(eltype(pf)), zero(eltype(pf)))
     return pf
 end
 
 """
-    compute_flow_direct!(pf, pg, Φ::PTDF)
+    compute_flow_direct!(pf, pg, Φ::FullPTDF)
 
 Compute power flow `pf = Φ*pg` given PTDF matrix `Φ` and nodal injections `pg`.
 """
-function compute_flow!(pf, pg, Φ::PTDF)
+function compute_flow!(pf, pg, Φ::FullPTDF)
     mul!(pf, Φ.matrix, pg)
     return pf
 end
