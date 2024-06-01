@@ -1,5 +1,5 @@
 function test_ptdf_full()
-    data = PM.make_basic_network(pglib("14_ieee"))
+    data = PM.make_basic_network(pglib("pglib_opf_case14_ieee"))
     N = length(data["bus"])
     E = length(data["branch"])
     Φ_pm = PM.calc_basic_ptdf_matrix(data)
@@ -15,7 +15,7 @@ function test_ptdf_full()
 end
 
 function test_ptdf_lazy()
-    data = PM.make_basic_network(pglib("14_ieee"))
+    data = PM.make_basic_network(pglib("pglib_opf_case14_ieee"))
     N = length(data["bus"])
     E = length(data["branch"])
 
