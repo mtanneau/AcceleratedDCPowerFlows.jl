@@ -21,6 +21,7 @@ function __init__()
     PM.silence()
 end
 
+include("graphs.jl")
 include("ptdf.jl")
 
 end # module FastPowerFlow
