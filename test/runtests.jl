@@ -11,4 +11,5 @@ const FP = FastPowerFlow
 
 @testset "FastPowerFlow" begin
     include("ptdf.jl")
+    include("lodf.jl")
 end

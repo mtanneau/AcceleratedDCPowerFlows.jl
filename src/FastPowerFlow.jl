@@ -23,5 +23,6 @@ end
 
 include("graphs.jl")
 include("ptdf.jl")
+include("lodf.jl")
 
 end # module FastPowerFlow
