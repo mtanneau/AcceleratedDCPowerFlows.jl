@@ -142,3 +142,118 @@ function compute_flow!(pf, pg, Φ::FullPTDF)
     mul!(pf, Φ.matrix, pg)
     return pf
 end
+
+function benchmark_ptdf(data;
+    linear_solvers = [:cholesky, :ldlt, :lu, :klu],
+    verbose=false,
+    batch_size=96,
+    gpu=false,
+)
+    df = DataFrame(
+        :casename => String[],
+        :num_bus => Int[],
+        :num_branch => Int[],
+        :device => String[],
+        :cpu_cores => Int[],
+        :solver => String[],
+        :time_analyze => Float64[],
+        :time_factorize => Float64[],
+        :mem_analyze => Float64[],
+        :mem_factorize => Float64[],
+        :time_solve_1 => Float64[],
+        :mem_solve_1 => Float64[],
+        :batch_size => Int[],
+        :time_solve_batch => Float64[],
+        :mem_solve_batch => Float64[],
+    )
+
+    # Extract basic data
+    N = length(data["bus"])
+	E = length(data["branch"])
+    
+    # Pre-allocate data to compute power flows (lazy)
+    pg_x1 = randn(Float64, N)
+    pf_x1 = zeros(Float64, E)
+    pg_batch = randn(Float64, N, batch_size)
+    pf_batch = zeros(Float64, E, batch_size)
+    if gpu
+        pg_x1 = CuArray(pg_x1)
+        pf_x1 = CuArray(pf_x1)
+        pg_batch = CuArray(pg_batch)
+        pf_batch = CuArray(pf_batch)
+    end
+
+    # Benchmark time to factorize matrix
+    for solver in linear_solvers
+
+        if gpu && solver == :klu
+            @warn "KLU is not supported on GPU; skipping"
+            continue
+        end
+
+        try
+            LazyPTDF(data, solver=solver; gpu=gpu)
+        catch err
+            if isa(err, PosDefException)
+                @warn "$solver failed with PosDefException; skipping"
+                # TODO: record in dataframe but skip
+                continue
+            end
+            rethrow(err)
+        end
+
+        Φ = LazyPTDF(data, solver=solver; gpu=gpu)
+
+        # Benchmark only factorization step
+        S = -Φ.AtBA  # this is the matrix that should be factorized
+        op_fact = _linear_solver(solver)
+        b_fact = if gpu
+            cS = CUDA.CUSPARSE.CuSparseMatrixCSR(S)
+            @benchmark CUDA.@sync $(op_fact)($cS)
+        else
+            @benchmark $(op_fact)($S)
+        end
+        verbose && println("$solver; factorize")
+        verbose && display(b_fact)
+
+        # One vector
+        b_x1 = if gpu
+            @benchmark CUDA.@sync compute_flow!($pf_x1, $pg_x1, $Φ)
+        else
+            @benchmark compute_flow!($pf_x1, $pg_x1, $Φ)
+        end
+        verbose && println("$solver; m=1")
+        verbose && display(b_x1)
+        
+        # minibatch
+        b_batch = if gpu
+            @benchmark CUDA.@sync compute_flow!($pf_batch, $pg_batch, $Φ)
+        else
+            @benchmark compute_flow!($pf_batch, $pg_batch, $Φ)
+        end
+        verbose && println("$solver; m=$(batch_size)")
+        verbose && display(b_batch)
+
+        row = Dict(
+            :casename => data["name"],
+            :num_bus => N,
+            :num_branch => E,
+            :device => gpu ? name(CUDA.device()) : "CPU",
+            :cpu_cores => BLAS.get_num_threads(),
+            :solver => "$(solver)",
+            :time_analyze => 0.0,
+            :time_factorize => median(b_fact.times) / 1e9,
+            :mem_analyze => 0,
+            :mem_factorize => b_fact.memory,
+            :time_solve_1 => median(b_x1.times) / 1e9,
+            :mem_solve_1 => b_x1.memory,
+            :time_solve_batch => median(b_batch.times) / 1e9,
+            :mem_solve_batch => b_batch.memory,
+            :batch_size => batch_size,
+        )
+
+        push!(df, row)
+    end
+
+    return df
+end
