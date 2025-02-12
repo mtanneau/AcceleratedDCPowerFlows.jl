@@ -1,5 +1,19 @@
 abstract type AbstractPTDF end
 
+function _linear_solver(s)
+    if s == :lu
+        return lu
+    elseif s == :klu
+        return KLU.klu
+    elseif s == :ldlt
+        return ldlt
+    elseif s == :cholesky
+        return cholesky
+    else
+        error("Invalid linear solver: only lu, klu, ldlt, cholesky are supported")
+    end
+end
+
 struct FullPTDF{M} <: AbstractPTDF
     N::Int  # number of buses
     E::Int  # number of branches
@@ -7,12 +21,44 @@ struct FullPTDF{M} <: AbstractPTDF
     matrix::M  # PTDF matrix
 end
 
-function FullPTDF(network)
+function FullPTDF(network; gpu=false)
     N = length(network["bus"])
     E = length(network["branch"])
-    matrix = calc_basic_ptdf_matrix(network)
+    A = Float64.(calc_basic_incidence_matrix(network))
+    b = [
+        calc_branch_y(network["branch"]["$e"])[2]
+        for e in 1:E
+    ]
+    B = Diagonal(b)
+    BA = B * A
+    S = A' * BA
+    ref_idx = reference_bus(network)["bus_i"]
+    S[ref_idx, :] .= 0.0
+    S[:, ref_idx] .= 0.0
+    S[ref_idx, ref_idx] = -1.0;  # to enable cholesky
+    S = -S
 
-    return FullPTDF(N, E, matrix)
+    opfact = ldlt  # FIXME
+
+    Φ = if gpu
+        S = CUDA.CUSPARSE.CuSparseMatrixCSR(S)
+        F = opfact(S)
+        cI = CuMatrix(1.0I, N, N)
+        M = F \ cI
+        M[ref_idx, :] .= 0
+        BA = CUDA.CUSPARSE.CuSparseMatrixCSR(BA)
+        BA * M
+    else
+        F = opfact(S)
+        M = F \ Matrix(1.0I, N, N)
+        M[ref_idx, :] .= 0
+        BA * M
+    end
+
+    # TODO: droptol
+    # TODO: lower precision
+
+    return FullPTDF(N, E, Φ)
 end
 
 struct LazyPTDF{TF,V,SM} <: AbstractPTDF
