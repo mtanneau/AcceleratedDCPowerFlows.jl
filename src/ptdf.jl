@@ -31,7 +31,7 @@ struct LazyPTDF{TF,V,SM} <: AbstractPTDF
     # TODO: cache
 end
 
-function LazyPTDF(network; solver::Symbol=:klu)
+function LazyPTDF(network; solver::Symbol=:ldlt, gpu=false)
     N = length(network["bus"])
     E = length(network["branch"])
     A = Float64.(calc_basic_incidence_matrix(network))
@@ -48,6 +48,14 @@ function LazyPTDF(network; solver::Symbol=:klu)
     S[ref_idx, ref_idx] = -1.0;  # to enable cholesky
     S = -S
 
+    if gpu
+        A = CUDA.CUSPARSE.CuSparseMatrixCSR(A)
+        b = CuArray(b)
+        BA = CUDA.CUSPARSE.CuSparseMatrixCSR(BA)
+        AtBA = CUDA.CUSPARSE.CuSparseMatrixCSR(AtBA)
+        S = CUDA.CUSPARSE.CuSparseMatrixCSR(S)
+    end
+
     if solver == :lu
         F = lu(S)
     elseif solver == :klu
@@ -56,14 +64,9 @@ function LazyPTDF(network; solver::Symbol=:klu)
         F = ldlt(S)
     elseif solver == :cholesky
         # If Cholesky is not possible, default to LDLᵀ
-        if maximum(b) < 0.0
-            F = cholesky(S)
-        else
-            @warn "Some branches have positive susceptance, cannot use Cholesky; defaulting to LDLᵀ"
-            F = ldlt(S)
-        end
+        F = cholesky(S)
     else
-        error("Invalid linear solver: only lu, klu, ldlt are supported")
+        error("Invalid linear solver: only cholesky, ldlt, lu, and klu (CPU-only) are supported")
     end
 
     return LazyPTDF(N, E, ref_idx, A, b, BA, AtBA, F)
