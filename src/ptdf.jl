@@ -1,10 +1,10 @@
 abstract type AbstractPTDF end
 
-struct FullPTDF{T} <: AbstractPTDF
+struct FullPTDF{M} <: AbstractPTDF
     N::Int  # number of buses
     E::Int  # number of branches
 
-    matrix::Matrix{T}  # PTDF matrix
+    matrix::M  # PTDF matrix
 end
 
 function FullPTDF(network)
@@ -15,15 +15,15 @@ function FullPTDF(network)
     return FullPTDF(N, E, matrix)
 end
 
-struct LazyPTDF{TF} <: AbstractPTDF
+struct LazyPTDF{TF,V,SM} <: AbstractPTDF
     N::Int  # number of buses
     E::Int  # number of branches
     islack::Int  # Index of slack bus
 
-    A::SparseMatrixCSC{Float64,Int}  # incidence matrix
-    b::Vector{Float64}  # branch susceptances
-    BA::SparseMatrixCSC{Float64,Int}  # B*A
-    AtBA::SparseMatrixCSC{Float64,Int}  # AᵀBA
+    A::SM  # incidence matrix
+    b::V  # branch susceptances
+    BA::SM  # B*A
+    AtBA::SM  # AᵀBA
 
     F::TF   # Factorization of -(AᵀBA). Must be able to solve linear systems with F \ p
             # We use a factorization of -(AᵀBA) to support cholesky factorization when possible
