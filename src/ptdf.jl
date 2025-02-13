@@ -14,51 +14,56 @@ function _linear_solver(s)
     end
 end
 
-struct FullPTDF{M} <: AbstractPTDF
+struct FullPTDF{D,S} <: AbstractPTDF
     N::Int  # number of buses
     E::Int  # number of branches
 
-    matrix::M  # PTDF matrix
+    Yinv::D  # Inverse of admittance matrix (dense)
+             # Note: we actually store (-Y)⁻¹
+    BA::S    # B * A (stored as sparse matrix)
+             # Note: we also store (-B)*A
 end
 
 function FullPTDF(network; gpu=false)
     N = length(network["bus"])
     E = length(network["branch"])
     A = Float64.(calc_basic_incidence_matrix(network))
+    # ⚠ we negate the susceptance here
+    #    so that AᵀBA is positive definite
     b = [
-        calc_branch_y(network["branch"]["$e"])[2]
+        -calc_branch_y(network["branch"]["$e"])[2]
         for e in 1:E
     ]
     B = Diagonal(b)
     BA = B * A
-    S = A' * BA
+    Y = A' * BA
     ref_idx = reference_bus(network)["bus_i"]
-    S[ref_idx, :] .= 0.0
-    S[:, ref_idx] .= 0.0
-    S[ref_idx, ref_idx] = -1.0;  # to enable cholesky
-    S = -S
+    Y[ref_idx, :] .= 0.0
+    Y[:, ref_idx] .= 0.0
+    Y[ref_idx, ref_idx] = -1.0;  # to enable cholesky
 
     opfact = ldlt  # FIXME
 
-    Φ = if gpu
-        S = CUDA.CUSPARSE.CuSparseMatrixCSR(S)
-        F = opfact(S)
-        cI = CuMatrix(1.0I, N, N)
-        M = F \ cI
-        M[ref_idx, :] .= 0
-        BA = CUDA.CUSPARSE.CuSparseMatrixCSR(BA)
-        BA * M
-    else
-        F = opfact(S)
-        M = F \ Matrix(1.0I, N, N)
-        M[ref_idx, :] .= 0
-        BA * M
-    end
-
     # TODO: droptol
-    # TODO: lower precision
+    # TODO: allow lower precision
 
-    return FullPTDF(N, E, Φ)
+    if gpu
+        Y = CUDA.CUSPARSE.CuSparseMatrixCSR(Y)
+        BA = CUDA.CUSPARSE.CuSparseMatrixCSR(BA)
+
+        F = opfact(Y)
+        cI = CuMatrix(1.0I, N, N)
+        Yinv = F \ cI
+        Yinv[ref_idx, :] .= 0
+        
+        return FullPTDF(N, E, Yinv, BA)
+    else
+        F = opfact(Y)
+        Yinv = F \ Matrix(1.0I, N, N)
+        Yinv[ref_idx, :] .= 0
+        
+        return FullPTDF(N, E, Yinv, BA)
+    end
 end
 
 struct LazyPTDF{TF,V,SM} <: AbstractPTDF
