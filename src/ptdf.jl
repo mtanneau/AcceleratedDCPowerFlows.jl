@@ -144,7 +144,15 @@ end
 Compute power flow `pf = Φ*pg` given PTDF matrix `Φ` and nodal injections `pg`.
 """
 function compute_flow!(pf, pg, Φ::FullPTDF)
-    mul!(pf, Φ.matrix, pg)
+    θ = Φ.Yinv * pg
+    mul!(pf, Φ.BA, θ)
+    return pf
+end
+
+function compute_flow!(pf, pg, Φ::FullPTDF, θ)
+    # TODO: dimension checks
+    mul!(θ, Φ.Yinv, pg)
+    mul!(pf, Φ.BA, θ)
     return pf
 end
 
