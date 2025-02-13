@@ -21,6 +21,10 @@ function __init__()
     PM.silence()
 end
 
+export FullPTDF, LazyPTDF
+export FullLODF, LazyLODF
+export compute_flow!
+
 include("graphs.jl")
 include("ptdf.jl")
 include("lodf.jl")
