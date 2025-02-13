@@ -2,13 +2,16 @@ function test_ptdf_full()
     data = PM.make_basic_network(pglib("pglib_opf_case14_ieee"))
     N = length(data["bus"])
     E = length(data["branch"])
-    Φ_pm = PM.calc_basic_ptdf_matrix(data)
     p = randn(N)
     f = zeros(E)
+
+    # Reference power flows, computed with PowerModels
+    Φ_pm = PM.calc_basic_ptdf_matrix(data)
+    fpm = Φ_pm * p  # power flows, computed with PowerModels
     
-    Φ = FP.FullPTDF(data)
-    fpm = Φ_pm * p
-    FP.compute_flow!(f, p, Φ)
+    # Form PTDF and compute power flows
+    Φ = FP.FullPTDF(data; gpu=false)
+    FP.compute_flow!(f, p, Φ)  
     @test isapprox(f, fpm; atol=1e-6)
 
     return nothing
@@ -21,13 +24,15 @@ function test_ptdf_lazy()
 
     p = randn(N)
     f = zeros(E)
+
+    # Reference power flows, computed with PowerModels
     Φ_pm = PM.calc_basic_ptdf_matrix(data)
     fpm = Φ_pm * p
     
     @testset "$solver" for solver in [:cholesky, :ldlt, :lu, :klu]
-        Φ = FP.LazyPTDF(data; solver)
+        Φ = FP.LazyPTDF(data; solver, gpu=false)
 
-        # Check power flow computation
+        # Check our power flows against PowerModels
         FP.compute_flow!(f, p, Φ)
         @test isapprox(f, fpm; atol=1e-6)
     end
