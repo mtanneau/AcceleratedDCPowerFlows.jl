@@ -28,11 +28,11 @@ function FullLODF(network)
     return FullLODF(Φ.N, Φ.E, M)
 end
 
-struct LazyLODF{TF} <: AbstractLODF
+struct LazyLODF{TF,V,SM} <: AbstractLODF
     N::Int
     E::Int
     
-    Φ::LazyPTDF{TF}
+    Φ::LazyPTDF{TF,V,SM}
 end
 
 function LazyLODF(data; solver::Symbol=:klu)
