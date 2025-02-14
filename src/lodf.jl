@@ -1,9 +1,9 @@
 abstract type AbstractLODF end
 
-struct FullLODF <: AbstractLODF
+struct FullLODF{M} <: AbstractLODF
     N::Int
     E::Int
-    matrix::Matrix{Float64}
+    matrix::M
 end
 
 function FullLODF(network)
@@ -14,7 +14,7 @@ function FullLODF(network)
     At = Matrix(Φ.A')
     _M = (Φ.F \ At)
     _M[i0, :] .= 0  # ⚠ need to zero-out slack bus angle
-    M = -Φ.BA * _M
+    M = Φ.BA * _M
     d = inv.(1 .- diag(M))
     d .*= (abs.(d) .<= 1e8)
     D = Diagonal(d)
