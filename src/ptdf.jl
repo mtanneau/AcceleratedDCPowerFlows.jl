@@ -40,7 +40,7 @@ function FullPTDF(network; gpu=false)
     ref_idx = reference_bus(network)["bus_i"]
     Y[ref_idx, :] .= 0.0
     Y[:, ref_idx] .= 0.0
-    Y[ref_idx, ref_idx] = -1.0;  # to enable cholesky
+    Y[ref_idx, ref_idx] = 1.0
 
     opfact = ldlt  # FIXME
 
@@ -71,13 +71,14 @@ struct LazyPTDF{TF,V,SM} <: AbstractPTDF
     E::Int  # number of branches
     islack::Int  # Index of slack bus
 
-    A::SM  # incidence matrix
-    b::V  # branch susceptances
-    BA::SM  # B*A
-    AtBA::SM  # AᵀBA
+    A::SM   # incidence matrix
+    b::V    # branch susceptances (negated)
+    BA::SM  # B*A (negated)
+    Y::SM   # Y = A'BA (nodal admittance matrix, negated)
 
-    F::TF   # Factorization of -(AᵀBA). Must be able to solve linear systems with F \ p
-            # We use a factorization of -(AᵀBA) to support cholesky factorization when possible
+    F::TF   # Factorization of Y. Must be able to solve linear systems with F \ p
+            # ⚠ We use a factorization of -(AᵀBA) to support cholesky factorization when possible
+            #    this is because branch susceptances are typically negative, hence AᵀBA is negative definite
 
     # TODO: cache
 end
@@ -87,40 +88,39 @@ function LazyPTDF(network; solver::Symbol=:ldlt, gpu=false)
     E = length(network["branch"])
     A = Float64.(calc_basic_incidence_matrix(network))
     b = [
-        calc_branch_y(network["branch"]["$e"])[2]
+        -calc_branch_y(network["branch"]["$e"])[2]
         for e in 1:E
     ]
+    # TODO: move to GPU here, instead of forming Y on CPU
     B = Diagonal(b)
     BA = B * A
-    S = AtBA = A' * BA
+    Y = A' * BA
     ref_idx = reference_bus(network)["bus_i"]
-    S[ref_idx, :] .= 0.0
-    S[:, ref_idx] .= 0.0
-    S[ref_idx, ref_idx] = -1.0;  # to enable cholesky
-    S = -S
+    Y[ref_idx, :] .= 0.0
+    Y[:, ref_idx] .= 0.0
+    Y[ref_idx, ref_idx] = 1.0
 
     if gpu
         A = CUDA.CUSPARSE.CuSparseMatrixCSR(A)
         b = CuArray(b)
         BA = CUDA.CUSPARSE.CuSparseMatrixCSR(BA)
-        AtBA = CUDA.CUSPARSE.CuSparseMatrixCSR(AtBA)
-        S = CUDA.CUSPARSE.CuSparseMatrixCSR(S)
+        Y = CUDA.CUSPARSE.CuSparseMatrixCSR(Y)
     end
 
     if solver == :lu
-        F = lu(S)
+        F = lu(Y)
     elseif solver == :klu
-        F = KLU.klu(S)
+        F = KLU.klu(Y)
     elseif solver == :ldlt
-        F = ldlt(S)
+        F = ldlt(Y)
     elseif solver == :cholesky
         # If Cholesky is not possible, default to LDLᵀ
-        F = cholesky(S)
+        F = cholesky(Y)
     else
         error("Invalid linear solver: only cholesky, ldlt, lu, and klu (CPU-only) are supported")
     end
 
-    return LazyPTDF(N, E, ref_idx, A, b, BA, AtBA, F)
+    return LazyPTDF(N, E, ref_idx, A, b, BA, Y, F)
 end
 
 """
@@ -134,7 +134,10 @@ Namely, `pf` is computed as `pf = BA * (F \\ pg)`, where `F` is a factorization
 function compute_flow!(pf, pg, Φ::LazyPTDF)
     θ = Φ.F \ pg
     θ[Φ.islack, :] .= 0  # slack voltage angle is zero
-    mul!(pf, Φ.BA, θ, -one(eltype(pf)), zero(eltype(pf)))
+    # Recall that Φ.F is negated, and Φ.BA is also negated...
+    #   .. so we are doing pf = (-B * A) * (-Y⁻¹) * pg ..
+    #   .. and the two negations cancel out
+    mul!(pf, Φ.BA, θ, one(eltype(pf)), zero(eltype(pf)))
     return pf
 end
 
