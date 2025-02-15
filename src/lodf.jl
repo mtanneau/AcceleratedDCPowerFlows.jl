@@ -20,6 +20,8 @@ function FullLODF(network)
     D = Diagonal(d)
     rmul!(M, D)
 
+    # Set diagonal elements to -1
+    # --> this ensures that post-contingency flow on tripped branch is zero
     E = Φ.E
     for i in 1:E
         M[i, i] = -1
@@ -28,20 +30,37 @@ function FullLODF(network)
     return FullLODF(Φ.N, Φ.E, M)
 end
 
-struct LazyLODF{TF,V,SM} <: AbstractLODF
+struct LazyLODF{SM,PTDF} <: AbstractLODF
     N::Int
     E::Int
+
+    # Some network info
+    islack::Int
+    A::SM
+    b::Vector{Float64}
     
-    Φ::LazyPTDF{TF,V,SM}
+    Φ::PTDF
 end
 
-function LazyLODF(data; solver::Symbol=:klu)
-    Φ = LazyPTDF(data; solver=solver)
-    return LazyLODF(Φ.N, Φ.E, Φ)
+function LazyLODF(data; ptdf_type=:lazy, kwargs...)
+    islack = reference_bus(data)["bus_i"]
+    A = Float64.(calc_basic_incidence_matrix(data))
+    b = [
+        -calc_branch_y(data["branch"]["$e"])[2]
+        for e in 1:length(data["branch"])
+    ]
+    if ptdf_type == :lazy
+        Φ = LazyPTDF(data; kwargs...)
+    elseif ptdf_type == :full
+        Φ = FullPTDF(data; kwargs...)
+    else
+        throw(ErrorException("Invalid PTDF type: $ptdf_type; only :lazy and :full are supported"))
+    end
+    return LazyLODF(Φ.N, Φ.E, islack, A, b, Φ)
 end
 
 function LazyLODF(Φ::LazyPTDF)
-    return LazyLODF(Φ.N, Φ.E, Φ)
+    return LazyLODF(Φ.N, Φ.E, Φ.islack, Φ.A, b, Φ)
 end
 
 function compute_flow!(pf, p::Vector, L::LazyLODF, k::Int)
