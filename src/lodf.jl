@@ -83,29 +83,60 @@ function compute_flow!(pfc, p::Vector, pf0::Vector, L::FullLODF, c::Int)
     @views pfc .= pf0 .+ (pf0[c] .* L.matrix[:, c])
     return pfc
 end
-    Φ = L.Φ
-    i0 = Φ.islack
-    # TODO: give option to pass θ0 or pf0 as argument
-    # This would save one linear system solve
-    θ0 = -(Φ.F \ p)  # Lazy PTDF factorizes -(AᵀBA), so we need to negate
-    θ0[i0] = 0       # slack bus has zero phase angle
 
-    # Next, we need to compute (AᵀBA)⁻¹ aₖ, where aₖ is the kth row of A
-    a = Vector(Φ.A[k, :])  # ⚠ most linear solvers wrappers do not support passing a sparse RHS here
-    bk = Φ.b[k]
-    ξ = -(Φ.F \ a)  # Lazy PTDF factorizes -(AᵀBA), so we need to negate
-    ξ[i0] = 0       # slack bus has zero phase angle
+function compute_flow!(pfc, p::Vector, pf0::Vector, L::LazyLODF{SM,<:FullPTDF}, k::Int) where{SM}
+    i0 = L.islack
+    A = L.A
+    Φ = L.Φ
+
+    # Compute Y⁻¹ aₖ, where aₖ is the kth row of A
+    ak = Vector(A[k, :])    # ⚠ most linear solvers wrappers do not support passing a sparse RHS here
+    bk = -L.b[k]            # susceptance of tripped branch
+    ξ = -(Φ.Yinv * ak)      # FullPTDF stores -Y⁻¹, so we need to negate
+                            # TODO: since `a` only has two non-zeros, 
+                            #   (Y⁻¹ * a) is just combining two columns of Y⁻¹.
+    ξ[i0] = 0               # slack bus has zero phase angle
 
     # Compute post-update phase angles via SWM formula
-    θc = θ0 + (dot(a, θ0) * bk / (1 - bk*dot(a, ξ))) .* ξ
-    θc[i0] = 0
+    β = (1.0 - bk*dot(ak, ξ))
+    ξ ./= β   # TODO: make sure there's no division by zero here
+    ξ[i0] = 0
 
     # Re-multiply by BA, and zero-out the kth element
-    mul!(pf, Φ.BA, θc)
-    pf[k] = 0
+    pfc .= pf0
+    mul!(pfc, Φ.BA, ξ, -pf0[k], 1.0)
+    pfc[k] = 0
 
-    return pf
+    return pfc
 end
+
+function compute_flow!(pfc, p::Vector, pf0::Vector, L::LazyLODF{SM,<:LazyPTDF}, k::Int) where{SM}
+    i0 = L.islack
+    A = L.A
+    Φ = L.Φ
+
+    # Compute Y⁻¹ aₖ, where aₖ is the kth row of A
+    ak = Vector(A[k, :])    # ⚠ most linear solvers wrappers do not support passing a sparse RHS here
+    bk = -L.b[k]
+    ξ  = -(Φ.F \ ak)        # Lazy PTDF factorizes -(AᵀBA), so we need to negate
+                            # TODO: since `a` only has two non-zeros, 
+                            #   (Y⁻¹ * a) is just combining two columns of Y⁻¹.
+    ξ[i0] = 0               # slack bus has zero phase angle
+
+    # Compute post-update phase angles via SWM formula
+    β = (1.0 - bk*dot(ak, ξ))
+    ξ ./= β   # TODO: make sure there's no division by zero here
+    ξ[i0] = 0
+
+    # Re-multiply by BA, and zero-out the kth element
+    pfc .= pf0
+    mul!(pfc, Φ.BA, ξ, -pf0[k], 1.0)
+    pfc[k] = 0
+
+    return pfc
+end
+
+
 
 function compute_all_flows!(pf, p, pf0, L::FullLODF; outages=Int[])
     N, E = L.N, L.E
