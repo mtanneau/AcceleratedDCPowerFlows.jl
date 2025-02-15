@@ -63,7 +63,26 @@ function LazyLODF(Φ::LazyPTDF)
     return LazyLODF(Φ.N, Φ.E, Φ.islack, Φ.A, b, Φ)
 end
 
-function compute_flow!(pf, p::Vector, L::LazyLODF, k::Int)
+"""
+    compute_flow!(pfc, p, pf0, L::FullLODF, c::Int)
+
+Compute the power flow adjustments after a contingency.
+
+# Arguments
+- `pfc`: Post-contingency power flow vector (pre-allocated)
+- `p`: Nodal power injections
+- `pf0`: Pre-contingency power flow vector
+- `L::FullLODF`: The Line Outage Distribution Factor (LODF) matrix.
+- `c::Int`: The index of the contingency line.
+
+# Description
+This function updates the power flow vector `pf` to reflect the changes in power flow due to the outage of the line specified by the index `c`. 
+    The LODF matrix `L` is used to compute the impact of the line outage on the power flows.
+"""
+function compute_flow!(pfc, p::Vector, pf0::Vector, L::FullLODF, c::Int)
+    @views pfc .= pf0 .+ (pf0[c] .* L.matrix[:, c])
+    return pfc
+end
     Φ = L.Φ
     i0 = Φ.islack
     # TODO: give option to pass θ0 or pf0 as argument
