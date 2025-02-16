@@ -49,6 +49,7 @@ function test_lazy_lodf()
     K = length(outages)
 
     Φ = calc_basic_ptdf_matrix(data)
+    pf0 = Φ * p
 
     # Compute LODF
     L = FP.LazyLODF(data)
@@ -64,7 +65,7 @@ function test_lazy_lodf()
         Φk = calc_basic_ptdf_matrix(data)
         pf_pm = Φk * p
         
-        FP.compute_flow!(pf_fp, p, L, k)
+        FP.compute_flow!(pf_fp, p, pf0, L, k)
 
         @test isapprox(pf_pm, pf_fp, atol=1e-6)
 
