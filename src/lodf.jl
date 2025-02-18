@@ -99,12 +99,10 @@ function compute_flow!(pfc, p::Vector, pf0::Vector, L::LazyLODF{SM,<:FullPTDF}, 
 
     # Compute post-update phase angles via SWM formula
     β = (1.0 - bk*dot(ak, ξ))
-    ξ ./= β   # TODO: make sure there's no division by zero here
-    ξ[i0] = 0
 
     # Re-multiply by BA, and zero-out the kth element
     pfc .= pf0
-    mul!(pfc, Φ.BA, ξ, -pf0[k], 1.0)
+    mul!(pfc, Φ.BA, ξ, -pf0[k] / β, 1.0)
     pfc[k] = 0
 
     return pfc
@@ -126,11 +124,11 @@ function compute_flow!(pfc, p::Vector, pf0::Vector, L::LazyLODF{SM,<:LazyPTDF}, 
     # Compute post-update phase angles via SWM formula
     β = (1.0 - bk*dot(ak, ξ))
     ξ ./= β   # TODO: make sure there's no division by zero here
-    ξ[i0] = 0
+    β = (1.0 - bk*dot(ak, ξ))  # FIXME: aₖᵀξ is only 2 operations
 
     # Re-multiply by BA, and zero-out the kth element
     pfc .= pf0
-    mul!(pfc, Φ.BA, ξ, -pf0[k], 1.0)
+    mul!(pfc, Φ.BA, ξ, -pf0[k] / β, 1.0)
     pfc[k] = 0
 
     return pfc
