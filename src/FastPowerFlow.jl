@@ -61,6 +61,9 @@ function BranchIncidenceMatrix(data::Dict)
     return BranchIncidenceMatrix(N, E, bus_fr, bus_to)
 end
 
+import Base.size
+Base.size(A::BranchIncidenceMatrix) = (A.E, A.N)
+
 import LinearAlgebra.mul!
 
 """

@@ -10,7 +10,7 @@ function _linear_solver(s)
     elseif s == :cholesky
         return cholesky
     else
-        error("Invalid linear solver: only lu, klu, ldlt, cholesky are supported")
+        error("Invalid linear solver: only lu, klu (CPU only), ldlt, cholesky are supported")
     end
 end
 
@@ -24,7 +24,7 @@ struct FullPTDF{D,TA,V} <: AbstractPTDF
     b::V     # branch susceptances (negated)
 end
 
-function FullPTDF(network; gpu=false)
+function FullPTDF(network; solver=:ldlt, gpu=false)
     N = length(network["bus"])
     E = length(network["branch"])
     A = Float64.(calc_basic_incidence_matrix(network))
@@ -42,7 +42,7 @@ function FullPTDF(network; gpu=false)
     Y[:, ref_idx] .= 0.0
     Y[ref_idx, ref_idx] = 1.0
 
-    opfact = ldlt  # FIXME
+    opfact = _linear_solver(solver)
 
     # TODO: droptol
     # TODO: allow lower precision
@@ -114,18 +114,10 @@ function LazyPTDF(network; solver::Symbol=:ldlt, gpu=false)
         A = BranchIncidenceMatrix(network)
     end
 
-    if solver == :lu
-        F = lu(Y)
-    elseif solver == :klu
-        F = KLU.klu(Y)
-    elseif solver == :ldlt
-        F = ldlt(Y)
-    elseif solver == :cholesky
-        # If Cholesky is not possible, default to LDLᵀ
-        F = cholesky(Y)
-    else
-        error("Invalid linear solver: only cholesky, ldlt, lu, and klu (CPU-only) are supported")
-    end
+    gpu && (solver == :klu) && error("KLU is not supported on GPU")
+
+    opfact = _linear_solver(solver)
+    F = opfact(Y)
 
     return LazyPTDF(N, E, ref_idx, A, b, BA, Y, F)
 end
