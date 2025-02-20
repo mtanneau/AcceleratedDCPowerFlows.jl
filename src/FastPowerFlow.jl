@@ -47,10 +47,15 @@ struct BranchIncidenceMatrix
 end
 
 function BranchIncidenceMatrix(data::Dict)
-    N = length(data["bus"])
-    E = length(data["branch"])
-    bus_fr = [data["branch"]["$e"]["f_bus"] for e in 1:E]
-    bus_to = [data["branch"]["$e"]["t_bus"] for e in 1:E]
+    N::Int = length(data["bus"])
+    E::Int = length(data["branch"])
+
+    bus_fr = Vector{Int}(undef, E)
+    bus_to = Vector{Int}(undef, E)
+    for e in 1:E
+        bus_fr[e] = data["branch"]["$e"]["f_bus"]
+        bus_to[e] = data["branch"]["$e"]["t_bus"]
+    end
     
     # data checks
     imin, imax = extrema(bus_fr)
