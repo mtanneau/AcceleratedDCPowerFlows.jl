@@ -71,12 +71,12 @@ function FullPTDF(network; gpu=false)
     end
 end
 
-struct LazyPTDF{TF,V,SM} <: AbstractPTDF
+struct LazyPTDF{TF,TA,V,SM} <: AbstractPTDF
     N::Int  # number of buses
     E::Int  # number of branches
     islack::Int  # Index of slack bus
 
-    A::SM   # incidence matrix
+    A::TA   # incidence matrix
     b::V    # branch susceptances (negated)
     BA::SM  # B*A (negated)
     Y::SM   # Y = A'BA (nodal admittance matrix, negated)
@@ -110,6 +110,8 @@ function LazyPTDF(network; solver::Symbol=:ldlt, gpu=false)
         b = CuArray(b)
         BA = CUDA.CUSPARSE.CuSparseMatrixCSR(BA)
         Y = CUDA.CUSPARSE.CuSparseMatrixCSR(Y)
+    else
+        A = BranchIncidenceMatrix(network)
     end
 
     if solver == :lu
@@ -139,10 +141,12 @@ Namely, `pf` is computed as `pf = BA * (F \\ pg)`, where `F` is a factorization
 function compute_flow!(pf, pg, Φ::LazyPTDF)
     θ = Φ.F \ pg
     θ[Φ.islack, :] .= 0  # slack voltage angle is zero
-    # Recall that Φ.F is negated, and Φ.BA is also negated...
-    #   .. so we are doing pf = (-B * A) * (-Y⁻¹) * pg ..
+    # Recall that Φ.F is negated, and Φ.B is also negated...
+    #   .. so we are doing pf = (-B) * (A * (-Y⁻¹ * pg)) ..
     #   .. and the two negations cancel out
-    mul!(pf, Φ.BA, θ, one(eltype(pf)), zero(eltype(pf)))
+    # [perf] It is slightly faster to use (BA*θ) if A::SparseMatrix
+    mul!(pf, Φ.A, θ)
+    lmul!(Diagonal(Φ.b), pf)
     return pf
 end
 
