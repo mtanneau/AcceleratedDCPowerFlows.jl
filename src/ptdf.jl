@@ -14,14 +14,14 @@ function _linear_solver(s)
     end
 end
 
-struct FullPTDF{D,S} <: AbstractPTDF
+struct FullPTDF{D,TA,V} <: AbstractPTDF
     N::Int  # number of buses
     E::Int  # number of branches
 
     Yinv::D  # Inverse of admittance matrix (dense)
              # Note: we actually store (-Y)⁻¹
-    BA::S    # B * A (stored as sparse matrix)
-             # Note: we also store (-B)*A
+    A::TA    # branch incidence matrix (either sparse array or specialized type)
+    b::V     # branch susceptances (negated)
 end
 
 function FullPTDF(network; gpu=false)
@@ -49,20 +49,25 @@ function FullPTDF(network; gpu=false)
 
     if gpu
         Y = CUDA.CUSPARSE.CuSparseMatrixCSR(Y)
-        BA = CUDA.CUSPARSE.CuSparseMatrixCSR(BA)
+
+        # TODO: fast matvac product with `A` on GPU
+        A = CUDA.CUSPARSE.CuSparseMatrixCSR(A)
+        b = CuArray(b)
 
         F = opfact(Y)
         cI = CuMatrix(1.0I, N, N)
         Yinv = F \ cI
         Yinv[ref_idx, :] .= 0
         
-        return FullPTDF(N, E, Yinv, BA)
+        return FullPTDF(N, E, Yinv, A, b)
     else
         F = opfact(Y)
         Yinv = F \ Matrix(1.0I, N, N)
         Yinv[ref_idx, :] .= 0
+
+        A = BranchIncidenceMatrix(network)
         
-        return FullPTDF(N, E, Yinv, BA)
+        return FullPTDF(N, E, Yinv, A, b)
     end
 end
 
@@ -147,15 +152,20 @@ end
 Compute power flow `pf = Φ*pg` given PTDF matrix `Φ` and nodal injections `pg`.
 """
 function compute_flow!(pf, pg, Φ::FullPTDF)
-    θ = Φ.Yinv * pg
-    mul!(pf, Φ.BA, θ)
+    θ = similar(pg)
+    compute_flow!(pf, pg, Φ, θ)
     return pf
 end
 
 function compute_flow!(pf, pg, Φ::FullPTDF, θ)
     # TODO: dimension checks
     mul!(θ, Φ.Yinv, pg)
-    mul!(pf, Φ.BA, θ)
+    
+    # Note: if `A` is stored as a SparseMatrix, then it's likely
+    #      more efficient to store `(B*A)` directly
+    # Separating the product as `B * (A * θ)` is faster with a specialized A*θ 
+    mul!(pf, Φ.A, θ)
+    lmul!(Diagonal(Φ.b), pf)
     return pf
 end
 
