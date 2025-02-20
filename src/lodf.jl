@@ -11,7 +11,8 @@ function FullLODF(network)
     N = length(network["bus"])
     i0 = reference_bus(network)["bus_i"]
 
-    At = Matrix(Φ.A')
+    A = Float64.(calc_basic_incidence_matrix(network))
+    At = Matrix(A')
     _M = (Φ.F \ At)
     _M[i0, :] .= 0  # ⚠ need to zero-out slack bus angle
     M = Φ.BA * _M
