@@ -38,7 +38,7 @@ A[k, i] = +1 if branch k starts at bus i
         = -1 if branch k ends at bus j
         =  0 otherwise
 """
-struct BranchIncidenceMatrix <: AbstractMatrix
+struct BranchIncidenceMatrix
     N::Int
     E::Int
 
