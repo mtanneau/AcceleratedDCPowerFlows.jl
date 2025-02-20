@@ -138,7 +138,7 @@ function compute_flow!(pf, pg, Φ::LazyPTDF)
     #   .. and the two negations cancel out
     # [perf] It is slightly faster to use (BA*θ) if A::SparseMatrix
     mul!(pf, Φ.A, θ)
-    lmul!(Diagonal(Φ.b), pf)
+    pf .*= Φ.b  # broadcast instead of lmul!(Diagonal(Φ.b), pf) to avoid issues when running on GPU
     return pf
 end
 
@@ -161,7 +161,7 @@ function compute_flow!(pf, pg, Φ::FullPTDF, θ)
     #      more efficient to store `(B*A)` directly
     # Separating the product as `B * (A * θ)` is faster with a specialized A*θ 
     mul!(pf, Φ.A, θ)
-    lmul!(Diagonal(Φ.b), pf)
+    pf .*= Φ.b  # we use broadcast instead of lmul!(Diagonal(Φ.b), pf) to avoid issues when running on GPU
     return pf
 end
 
