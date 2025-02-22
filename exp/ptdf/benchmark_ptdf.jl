@@ -88,7 +88,7 @@ function benchmark_ptdf(data, PTDF; solver, gpu, Ks=[1, 24, 96])
 
     return res
 end
-
+    
 function main_ptdf(data)
     df = DataFrame(
         :casename => String[],
@@ -110,8 +110,9 @@ function main_ptdf(data)
     for ptdf_type in [:full, :lazy], solver in [:klu, :ldlt], gpu in [false, true]
 
         gpu && solver == :klu && continue  # KLU is not supported on GPU
-        gpu && (N > 30_000)   && continue  # Avoid CUDA OOM error
+        (N > 30_000) && gpu && ptdf_type == :full && continue  # Avoid OOM on GPU
 
+        GC.gc()
         res = benchmark_ptdf(data, ptdf_type; solver=solver, gpu=gpu, Ks=[1, 24, 96])
 
         row = Dict(
