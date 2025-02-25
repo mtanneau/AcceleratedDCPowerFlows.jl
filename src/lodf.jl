@@ -111,7 +111,7 @@ function compute_flow!(pfc, p::Vector, pf0::Vector, L::LazyLODF{SM,<:FullPTDF}, 
 
     # Re-multiply by BA, and zero-out the kth element
     mul!(pfc, Φ.A, ξ)
-    lmul!(Diagonal(Φ.b), pfc)
+    pfc .*= Φ.b
     pfc .*= (-pf0[k] / β)
     pfc .+= pf0
     pfc[k] = 0
@@ -152,7 +152,7 @@ function compute_flow!(pfc, p::Vector, pf0::Vector, L::LazyLODF{SM,<:LazyPTDF}, 
 
     # Re-multiply by BA, and zero-out the kth element
     mul!(pfc, Φ.A, ξ)
-    lmul!(Diagonal(Φ.b), pfc)
+    pfc .*= Φ.b
     pfc .*= (-pf0[k] / β)
     pfc .+= pf0
     pfc[k] = 0
