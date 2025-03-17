@@ -108,4 +108,40 @@ function LinearAlgebra.mul!(y::AbstractMatrix, A::BranchIncidenceMatrix, x::Abst
     return y
 end
 
+# GPU code
+struct BranchIncidenceMatrixGPU
+    N::Int
+    E::Int
+
+    bus_fr::CUDA.CuVector{Int32}
+    bus_to::CUDA.CuVector{Int32}
+end
+
+BranchIncidenceMatrixGPU(A::BranchIncidenceMatrix) = BranchIncidenceMatrixGPU(A.N, A.E, CuVector{Int32}(A.bus_fr), CuVector{Int32}(A.bus_to))
+Base.size(A::BranchIncidenceMatrixGPU) = (A.E, A.N)
+
+function _mul_kernel!(y, bus_fr, bus_to, x)
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    stride = gridDim().x * blockDim().x
+
+    @inbounds for e in index:stride:length(y)
+        i = bus_fr[e]
+        j = bus_to[e]
+        y[e] = x[i] - x[j]
+    end
+
+    return nothing
+end
+
+function LinearAlgebra.mul!(y::CuVector, A::BranchIncidenceMatrixGPU, x::CuVector)
+    kernel = @cuda launch=false _mul_kernel!(y, A.bus_fr, A.bus_to, x)
+    config = launch_configuration(kernel.fun)
+    threads = min(length(y), config.threads)
+    blocks = cld(length(y), threads)
+
+    kernel(y, A.bus_fr, A.bus_to, x; threads, blocks)
+
+    return y
+end
+
 end # module FastPowerFlow
