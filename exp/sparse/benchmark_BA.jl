@@ -1,6 +1,9 @@
+isinteractive() && (using Revise)
+
 using LinearAlgebra
 using SparseArrays
 using Statistics
+using CUDA
 
 using PowerModels
 const PM = PowerModels
@@ -18,7 +21,9 @@ BLAS.set_num_threads(1)
 
 function bamul!(f, A, b, θ)
     mul!(f, A, θ)
-    lmul!(Diagonal(b), f)
+    # lmul!(Diagonal(b), f) is not supported on GPU,
+    # so we use broadcasting instead
+    f .*= b
     return f
 end
 
@@ -50,13 +55,39 @@ function benchmark_BA(data; K=16)
     println()
 
     # Fast implementation
-    A_ = FastPowerFlow.BranchIncidenceMatrix(data)
-    res3 = @benchmark bamul!($f, $A_, $b, $θ)
+    Af = FastPowerFlow.BranchIncidenceMatrix(data)
+    res3 = @benchmark bamul!($f, $Af, $b, $θ)
     println("case: $(data["name"]) ; K=$K ; fast A")
     display(res3)
     println()
 
-    return (res1, res2, res3)
+    # GPU implementations
+    A_d = CUDA.CUSPARSE.CuSparseMatrixCSR(A)
+    BA_d = CUDA.CUSPARSE.CuSparseMatrixCSR(BA)
+    b_d = CuArray(b)
+    θ_d = CuArray(θ)
+    f_d = CuArray(f)
+    
+    # matvec with BA
+    res4 = @benchmark CUDA.@sync mul!($f_d, $BA_d, $θ_d)
+    println("case: $(data["name"]) ; K=$K ; sparse BA (GPU)")
+    display(res4)
+    println()
+
+    # matvec with A + element-wise product
+    res5 = @benchmark CUDA.@sync bamul!($f_d, $A_d, $b_d, $θ_d)
+    println("case: $(data["name"]) ; K=$K ; sparse B / sparse A (gpu)")
+    display(res5)
+    println()
+
+    # Specialized matvec product on GPU
+    Af_d = FastPowerFlow.BranchIncidenceMatrixGPU(Af)
+    res6 = @benchmark CUDA.@sync bamul!($f_d, $Af_d, $b_d, $θ_d)
+    println("case: $(data["name"]) ; K=$K ; fast A (gpu)")
+    display(res6)
+    println()
+
+    return (res1, res2, res3, res4, res5, res6)
 end
     
 function main()
@@ -79,7 +110,7 @@ function main()
         N = length(data["bus"])
         E = length(data["branch"])
         for K in [1, 24, 96]
-            res1, res2, res3 = benchmark_BA(data; K=K)
+            res1, res2, res3, res4, res5, res6 = benchmark_BA(data; K=K)
             row = Dict(
                 :case => casename,
                 :num_bus => N,
@@ -90,6 +121,18 @@ function main()
                 :time_BA_sparse => median(res1.times),
                 :time_BA_sparse_2 => median(res2.times),
                 :time_BA_optimized => median(res3.times),
+            )
+            push!(df, row)
+            row = Dict(
+                :case => casename,
+                :num_bus => N,
+                :num_branch => E,
+                :minimatch => K,
+                :device => "GPU",
+                :cpu_cores => BLAS.get_num_threads(),
+                :time_BA_sparse => median(res4.times),
+                :time_BA_sparse_2 => median(res5.times),
+                :time_BA_optimized => median(res6.times),
             )
             push!(df, row)
         end
