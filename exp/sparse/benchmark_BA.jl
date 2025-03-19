@@ -128,7 +128,7 @@ function main()
                 :num_bus => N,
                 :num_branch => E,
                 :minimatch => K,
-                :device => "GPU",
+                :device => try name(CUDA.device()) catch err "GPU" end,
                 :cpu_cores => BLAS.get_num_threads(),
                 :time_BA_sparse => median(res4.times) / 1e9,
                 :time_BA_sparse_2 => median(res5.times) / 1e9,
