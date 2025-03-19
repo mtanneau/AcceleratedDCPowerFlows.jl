@@ -118,9 +118,9 @@ function main()
                 :minimatch => K,
                 :device => "CPU",
                 :cpu_cores => BLAS.get_num_threads(),
-                :time_BA_sparse => median(res1.times),
-                :time_BA_sparse_2 => median(res2.times),
-                :time_BA_optimized => median(res3.times),
+                :time_BA_sparse => median(res1.times) / 1e9,
+                :time_BA_sparse_2 => median(res2.times) / 1e9,
+                :time_BA_optimized => median(res3.times) / 1e9,
             )
             push!(df, row)
             row = Dict(
@@ -130,9 +130,9 @@ function main()
                 :minimatch => K,
                 :device => "GPU",
                 :cpu_cores => BLAS.get_num_threads(),
-                :time_BA_sparse => median(res4.times),
-                :time_BA_sparse_2 => median(res5.times),
-                :time_BA_optimized => median(res6.times),
+                :time_BA_sparse => median(res4.times) / 1e9,
+                :time_BA_sparse_2 => median(res5.times) / 1e9,
+                :time_BA_optimized => median(res6.times) / 1e9,
             )
             push!(df, row)
         end
