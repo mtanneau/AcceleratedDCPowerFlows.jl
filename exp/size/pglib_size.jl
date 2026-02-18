@@ -48,8 +48,6 @@ function main_pglib_size()
         N = length(data["bus"])
         (N >= 1000) || continue
 
-        @info fname
-
         data = make_basic_network(data)
 
         # Re-export to JSON?
