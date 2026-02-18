@@ -1,3 +1,7 @@
+import Base.size
+import LinearAlgebra.mul!
+import SparseArrays: sparse
+
 """
     BranchIncidenceMatrix
 
@@ -15,16 +19,41 @@ struct BranchIncidenceMatrix
     bus_to::Vector{Int}
 end
 
-import Base.size
 Base.size(A::BranchIncidenceMatrix) = (A.E, A.N)
 
-import LinearAlgebra.mul!
+function BranchIncidenceMatrix(network::Network)
+    N = network.N
+    E = network.E
+
+    bus_fr = [br.bus_fr for br in network.branches]
+    bus_to = [br.bus_to for br in network.branches]
+
+    return BranchIncidenceMatrix(N, E, bus_fr, bus_to)
+end
+
+function SparseArrays.sparse(A::BranchIncidenceMatrix)
+    E, N = size(A)
+    Is = zeros(Int, 2*E)
+    Js = zeros(Int, 2*E)
+    Vs = zeros(Float64, 2*E)
+
+    for e in 1:E
+        i = A.bus_fr[e]
+        j = A.bus_to[e]
+        Is[2*e-1] = e
+        Js[2*e-1] = i
+        Vs[2*e-1] = +1.0
+        Is[2*e+0] = e
+        Js[2*e+0] = j
+        Vs[2*e+0] = -1.0
+    end
+    return SparseArrays.sparse(Is, Js, Vs, E, N)
+end
 
 """
     mul!(y, A::BranchIncidenceMatrix, x)
 
 Efficient implementation of Matrix-vector product with `A`.
-This function assumes that 
 """
 function LinearAlgebra.mul!(y::AbstractVector, A::BranchIncidenceMatrix, x::AbstractVector)
     N, E = A.N, A.E
