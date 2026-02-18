@@ -24,20 +24,17 @@ struct FullPTDF{D,TA,V} <: AbstractPTDF
     b::V     # branch susceptances (negated)
 end
 
-function FullPTDF(network; solver=:ldlt, gpu=false)
-    N = length(network["bus"])
-    E = length(network["branch"])
-    A = Float64.(calc_basic_incidence_matrix(network))
+function FullPTDF(network::Network; solver=:ldlt, gpu=false)
+    N = num_buses(network)
+    E = num_branches(network)
+    A = sparse(BranchIncidenceMatrix(network))
     # ⚠ we negate the susceptance here
     #    so that AᵀBA is positive definite
-    b = [
-        -calc_branch_y(network["branch"]["$e"])[2]
-        for e in 1:E
-    ]
+    b = [-br.b for br in network.branches]
     B = Diagonal(b)
     BA = B * A
     Y = A' * BA
-    ref_idx = reference_bus(network)["bus_i"]
+    ref_idx = network.slack_bus_index
     Y[ref_idx, :] .= 0.0
     Y[:, ref_idx] .= 0.0
     Y[ref_idx, ref_idx] = 1.0
@@ -88,19 +85,16 @@ struct LazyPTDF{TF,TA,V,SM} <: AbstractPTDF
     # TODO: cache
 end
 
-function LazyPTDF(network; solver::Symbol=:ldlt, gpu=false)
-    N = length(network["bus"])
-    E = length(network["branch"])
-    A = Float64.(calc_basic_incidence_matrix(network))
-    b = [
-        -calc_branch_y(network["branch"]["$e"])[2]
-        for e in 1:E
-    ]
+function LazyPTDF(network::Network; solver::Symbol=:ldlt, gpu=false)
+    N = num_buses(network)
+    E = num_branches(network)
+    A = sparse(BranchIncidenceMatrix(network))
+    b = [-br.b for br in network.branches]
     # TODO: move to GPU here, instead of forming Y on CPU
     B = Diagonal(b)
     BA = B * A
     Y = A' * BA
-    ref_idx = reference_bus(network)["bus_i"]
+    ref_idx = network.slack_bus_index
     Y[ref_idx, :] .= 0.0
     Y[:, ref_idx] .= 0.0
     Y[ref_idx, ref_idx] = 1.0

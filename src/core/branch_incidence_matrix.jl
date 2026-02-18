@@ -22,8 +22,8 @@ end
 Base.size(A::BranchIncidenceMatrix) = (A.E, A.N)
 
 function BranchIncidenceMatrix(network::Network)
-    N = network.N
-    E = network.E
+    N = num_buses(network)
+    E = num_branches(network)
 
     bus_fr = [br.bus_fr for br in network.branches]
     bus_to = [br.bus_to for br in network.branches]

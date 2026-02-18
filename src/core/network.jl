@@ -26,12 +26,14 @@ mutable struct Branch
 end
 
 struct Network
-    N::Int  # number of buses
-    E::Int  # number of branches
-
     buses::Vector{Bus}
+    slack_bus_index::Int  # index of slack bus
+
     branches::Vector{Branch}
 end
+
+num_buses(network::Network) = length(network.buses)
+num_branches(network::Network) = length(network.branches)
 
 """
     from_power_models(pmdata::Dict)
@@ -49,6 +51,7 @@ function from_power_models(pmdata::Dict)
         bus = Bus(i, true, 0.0)
         push!(buses, bus)
     end
+    iref_pm::Int = PowerModels.reference_bus(pmdata)["index"]
     sort!(buses, by=bus->bus.index)
     pmidx2bus = Dict(bus.index => bus for bus in buses)
     # Now, go through loads and generators to grab injections
@@ -98,6 +101,8 @@ function from_power_models(pmdata::Dict)
         br.index = k
     end
 
-    network = Network(N, E, buses, branches)
+    slack_bus_index = pmidx2bus[iref_pm].index
+
+    network = Network(buses, slack_bus_index, branches)
     return network
 end

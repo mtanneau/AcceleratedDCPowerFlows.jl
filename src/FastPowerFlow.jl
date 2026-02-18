@@ -19,6 +19,9 @@ function __init__()
     PM.silence()
 end
 
+export Network
+export num_buses, num_branches
+export from_power_models
 export FullPTDF, LazyPTDF
 export FullLODF, LazyLODF
 export compute_flow!

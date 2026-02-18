@@ -11,6 +11,7 @@ const FP = FastPowerFlow
 
 @testset "FastPowerFlow" begin
     @testset "core" begin
+        include("core/network.jl")
         include("core/branch_incidence_matrix.jl")
     end
 
