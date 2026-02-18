@@ -26,8 +26,8 @@ export FullLODF, LazyLODF
 export compute_flow!
 
 include("graphs.jl")
-include("ptdf.jl")
-include("lodf.jl")
+include("ptdf/ptdf.jl")
+include("lodf/lodf.jl")
 
 """
     BranchIncidenceMatrix
