@@ -1,17 +1,20 @@
 name = "FastPowerFlow"
 uuid = "c32744f1-403b-4af7-9195-1da907387c09"
-authors = ["mtanneau3 <mtanneau3@gatech.edu>"]
 version = "0.1.0"
+authors = ["mtanneau3 <mtanneau3@gatech.edu>"]
 
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 KLU = "ef3ab10e-7fda-4108-b977-705223b18434"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MKL = "33e6dc65-8f57-5167-99aa-e5a354878fb2"
+MetaGraphsNext = "fa8bd995-216d-47f1-8a91-f3b68fbeb377"
 PGLib = "07a8691f-3d11-4330-951b-3c50f98338be"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PowerModels = "c36e90e8-916a-50a6-bd94-075b64ef4655"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
@@ -21,3 +24,8 @@ SuiteSparse = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 [weakdeps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CUDSS = "45b445bb-4962-46a0-9369-b4df9d0f772e"
+
+[compat]
+CSV = "0.10.16"
+MetaGraphsNext = "0.8.0"
+Plots = "1.41.5"

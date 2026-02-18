@@ -2,6 +2,7 @@ using Base.Threads
 using CSV
 using DataFrames
 using LinearAlgebra
+using Random
 using SparseArrays
 using Statistics
 
@@ -16,9 +17,18 @@ using Plots
 
 gmean(x, s=one(eltype(x))) = exp(mean(log.(x .+ s))) - s
 
+"""
+    main_pglib_size()
+
+Compute size (#buses, #branches, #non-zeros in PTDF) for each PGLib test case.
+Only cases with at least 1000 buses are considered.
+
+The corresponding data is exported in a `.csv` file.
+"""
 function main_pglib_size()
 
     PGLIB_CASES = filter(f -> isfile(f) && endswith(f, ".m"), readdir(PGLib.PGLib_opf, join=true))
+    shuffle!(PGLIB_CASES)  # shuffle to balance threads
 
     df = DataFrame(
         casename=String[],
@@ -33,8 +43,10 @@ function main_pglib_size()
     @threads for fpath in PGLIB_CASES
         fname = basename(fpath)
         data = pglib(fpath)
+        
+        # Only process networks with at least 1000 buses
         N = length(data["bus"])
-        N <= 1000 && continue
+        (N >= 1000) || continue
 
         @info fname
 
@@ -59,19 +71,28 @@ function main_pglib_size()
         end
     end
 
-    sort!(df, :N)
+    sort!(df, [:N, :E])
     CSV.write(joinpath(@__DIR__, "pglib_size.csv"), df)
 
+    return df
+end
+
+"""
+    plot_pglib_size(df; save=true)
+
+Plot number of nonzeros in branch susceptance and nodal admittance factor.
+"""
+function plot_pglib_size(df; save=true)
     γ_E = gmean(df.E ./ df.N)
     γ_F = gmean(df.nnz_ldlt ./ df.N)
 
     plt = plot(
         yscale=:log10,
         ylim=(1000, 1_000_000),
-        yticks=(10 .^ (3:6), ["\$10^{$k}\$" for k in 3:6]),
+        # yticks=(10 .^ (3:6), ["\$10^{$k}\$" for k in 3:6]),
         xscale=:log10,
         xlim=(1000, 100_000),
-        xticks=(10 .^ (3:5), ["\$10^{$k}\$" for k in 3:5]),
+        # xticks=(10 .^ (3:5), ["\$10^{$k}\$" for k in 3:5]),
         legend=:topleft,
         xlabel="Number of buses",
         ylabel="Number of non-zeros"
@@ -81,12 +102,16 @@ function main_pglib_size()
     scatter!(plt, df.N, df.nnz_ldlt, label="|L|", color=:red)
     plot!(plt, df.N, γ_F .* df.N, label=nothing, color=:red, linestyle=:dash)
 
-    savefig(plt, joinpath(@__DIR__, "pglib_size.pdf"))
+    if save
+        savefig(plt, joinpath(@__DIR__, "pglib_size.pdf"))
+        savefig(plt, joinpath(@__DIR__, "pglib_size.svg"))
+    end
 
-    return df
+    return plt
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
     df = main_pglib_size()
+    plot_pglib_size(df, save=true)
     exit(0)
 end
