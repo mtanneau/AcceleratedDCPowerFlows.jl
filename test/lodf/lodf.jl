@@ -1,5 +1,6 @@
 function test_full_lodf()
     data = PM.make_basic_network(pglib("pglib_opf_case5_pjm"))
+    network = FP.from_power_models(data)
     N = length(data["bus"])
     E = length(data["branch"])
     p = real.(calc_basic_bus_injection(data))
@@ -12,7 +13,7 @@ function test_full_lodf()
     pf0 = Φ * p
 
     # Compute LODF
-    L = FP.FullLODF(data)
+    L = FP.FullLODF(network)
 
     pf_pm = zeros(E, K)
     pf_fp = zeros(E, K)
@@ -40,6 +41,7 @@ end
 
 function test_lazy_lodf()
     data = PM.make_basic_network(pglib("pglib_opf_case5_pjm"))
+    network = FP.from_power_models(data)
     N = length(data["bus"])
     E = length(data["branch"])
     p = real.(calc_basic_bus_injection(data))
@@ -52,7 +54,7 @@ function test_lazy_lodf()
     pf0 = Φ * p
 
     # Compute LODF
-    L = FP.LazyLODF(data)
+    L = FP.LazyLODF(network)
     pf_fp = zeros(E)
 
     for (i, k) in enumerate(outages)

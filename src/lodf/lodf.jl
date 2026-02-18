@@ -6,12 +6,12 @@ struct FullLODF{M} <: AbstractLODF
     matrix::M
 end
 
-function FullLODF(network)
+function FullLODF(network::Network)
     Φ = LazyPTDF(network)
-    N = length(network["bus"])
-    i0 = reference_bus(network)["bus_i"]
+    N = num_buses(network)
+    i0 = network.slack_bus_index
 
-    A = Float64.(calc_basic_incidence_matrix(network))
+    A = sparse(BranchIncidenceMatrix(network))
     At = Matrix(A')
     _M = (Φ.F \ At)
     _M[i0, :] .= 0  # ⚠ need to zero-out slack bus angle
@@ -23,8 +23,7 @@ function FullLODF(network)
 
     # Set diagonal elements to -1
     # --> this ensures that post-contingency flow on tripped branch is zero
-    E = Φ.E
-    for i in 1:E
+    for i in 1:Φ.E
         M[i, i] = -1
     end
 
@@ -43,17 +42,14 @@ struct LazyLODF{SM,PTDF} <: AbstractLODF
     Φ::PTDF
 end
 
-function LazyLODF(data; ptdf_type=:lazy, kwargs...)
-    islack = reference_bus(data)["bus_i"]
-    A = Float64.(calc_basic_incidence_matrix(data))
-    b = [
-        -calc_branch_y(data["branch"]["$e"])[2]
-        for e in 1:length(data["branch"])
-    ]
+function LazyLODF(network::Network; ptdf_type=:lazy, kwargs...)
+    islack = network.slack_bus_index
+    A = sparse(BranchIncidenceMatrix(network))
+    b = [-br.b for br in network.branches]
     if ptdf_type == :lazy
-        Φ = LazyPTDF(data; kwargs...)
+        Φ = LazyPTDF(network; kwargs...)
     elseif ptdf_type == :full
-        Φ = FullPTDF(data; kwargs...)
+        Φ = FullPTDF(network; kwargs...)
     else
         throw(ErrorException("Invalid PTDF type: $ptdf_type; only :lazy and :full are supported"))
     end
