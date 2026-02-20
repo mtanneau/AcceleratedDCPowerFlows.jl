@@ -17,7 +17,7 @@ struct BranchIncidenceMatrixGPU
 end
 
 BranchIncidenceMatrixGPU(A::BranchIncidenceMatrix) = BranchIncidenceMatrixGPU(A.N, A.E, CuVector{Int32}(A.bus_fr), CuVector{Int32}(A.bus_to))
-BranchIncidenceMatrixGPU(data::Dict) = BranchIncidenceMatrixGPU(BranchIncidenceMatrix(data))
+BranchIncidenceMatrixGPU(network::Network) = BranchIncidenceMatrixGPU(BranchIncidenceMatrix(network))
 Base.size(A::BranchIncidenceMatrixGPU) = (A.E, A.N)
 
 function _mul_kernel!(y, bus_fr, bus_to, x)

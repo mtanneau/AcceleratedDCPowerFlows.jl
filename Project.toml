@@ -25,7 +25,12 @@ SuiteSparse = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CUDSS = "45b445bb-4962-46a0-9369-b4df9d0f772e"
 
+[extensions]
+CUDAExt = ["CUDA", "CUDSS"]
+
 [compat]
 CSV = "0.10.16"
+CUDA = "5.9.6"
+CUDSS = "0.6.6"
 MetaGraphsNext = "0.8.0"
 Plots = "1.41.5"
