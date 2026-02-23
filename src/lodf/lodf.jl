@@ -76,28 +76,22 @@ Compute the power flow adjustments after a contingency.
 This function updates the power flow vector `pf` to reflect the changes in power flow due to the outage of the line specified by the index `c`. 
     The LODF matrix `L` is used to compute the impact of the line outage on the power flows.
 """
-function compute_flow!(pfc, p::Vector, pf0::Vector, L::FullLODF, c::Int)
+function compute_flow!(pfc, pf0::Vector, L::FullLODF, br::Branch)
+    c = br.index
     @views pfc .= pf0 .+ (pf0[c] .* L.matrix[:, c])
     return pfc
 end
 
-function compute_flow!(pfc, p::Vector, pf0::Vector, L::LazyLODF{SM,<:FullPTDF}, k::Int) where{SM}
+function compute_flow!(pfc, pf0::Vector, L::LazyLODF{SM,<:FullPTDF}, br::Branch) where{SM}
     i0 = L.islack
-    A = L.A
     Φ = L.Φ
 
     # Compute Y⁻¹ aₖ, where aₖ is the kth row of A
-    # First, extract (i, j) indices, such that branch k = (i, j)
-    if typeof(Φ.A) == BranchIncidenceMatrix
-        i = Φ.A.bus_fr[k]
-        j = Φ.A.bus_to[k]
-    else
-        # (slow) fallback; can be avoided by passing (i, j) as input
-        ak = A[k, :]
-        i = ak.nzval[1] == 1 ? ak.nzind[1] : ak.nzind[2]
-        j = ak.nzval[1] == 1 ? ak.nzind[2] : ak.nzind[1]
-    end
-    # Y⁻¹ aₖ is the difference between columns `i` and `j` of Y⁻¹
+    # Since we have formed Y⁻¹, we just need to compute 
+    #   the difference between columns `i` and `j` of Y⁻¹
+    k = br.index
+    i = br.bus_fr
+    j = br.bus_to
     @views ξ = Φ.Yinv[:, j] .- Φ.Yinv[:, i]
     ξ[i0] = 0               # slack bus has zero phase angle
 
@@ -115,27 +109,19 @@ function compute_flow!(pfc, p::Vector, pf0::Vector, L::LazyLODF{SM,<:FullPTDF}, 
     return pfc
 end
 
-function compute_flow!(pfc, p::Vector, pf0::Vector, L::LazyLODF{SM,<:LazyPTDF}, k::Int) where{SM}
+function compute_flow!(pfc, pf0::Vector, L::LazyLODF{SM,<:LazyPTDF}, br::Branch) where{SM}
     i0 = L.islack
-    A = L.A
     Φ = L.Φ
 
     # Compute Y⁻¹ aₖ, where aₖ is the kth row of A
     # First, extract (i, j) indices, such that branch k = (i, j)
-    (ak, i, j) = if typeof(Φ.A) == BranchIncidenceMatrix
-        i = Φ.A.bus_fr[k]
-        j = Φ.A.bus_to[k]
-        ak = zeros(L.N)
-        ak[i] = 1
-        ak[j] = -1
-        (ak, i, j)
-    else
-        # Re-build k-th row from sparse matrix
-        ak = A[k, :]
-        i = ak.nzval[1] == 1 ? ak.nzind[1] : ak.nzind[2]
-        j = ak.nzval[1] == 1 ? ak.nzind[2] : ak.nzind[1]
-        (Vector(ak), i, j)
-    end
+    k = br.index
+    i = br.bus_fr
+    j = br.bus_to
+    ak = zeros(eltype(pfc), L.N)
+    ak[i] = 1
+    ak[j] = -1
+
     # Solve linear system
     ξ  = -(Φ.F \ ak)        # Lazy PTDF factorizes -(AᵀBA), so we need to negate
                             # TODO: since `a` only has two non-zeros, 
@@ -156,14 +142,12 @@ function compute_flow!(pfc, p::Vector, pf0::Vector, L::LazyLODF{SM,<:LazyPTDF}, 
     return pfc
 end
 
-
-
-function compute_all_flows!(pf, p, pf0, L::FullLODF; outages=Int[])
+function compute_all_flows!(pfc, pf0, L::FullLODF; outages=Int[])
     N, E = L.N, L.E
 
     for (i, l) in enumerate(outages)
-        pf[:, i] .= pf0 .+ (pf0[l] .* L.matrix[:, l])
+        @views pfc[:, i] .= pf0 .+ (pf0[l] .* L.matrix[:, l])
     end
 
-    return pf
+    return pfc
 end

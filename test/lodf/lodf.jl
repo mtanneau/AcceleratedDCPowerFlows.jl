@@ -18,7 +18,7 @@ function test_full_lodf()
     pf_pm = zeros(E, K)
     pf_fp = zeros(E, K)
 
-    FP.compute_all_flows!(pf_fp, p, pf0, L; outages=outages)
+    FP.compute_all_flows!(pf_fp, pf0, L; outages=outages)
 
     for (i, k) in enumerate(outages)
         br = data["branch"]["$k"]
@@ -40,6 +40,11 @@ function test_full_lodf()
 end
 
 function test_lazy_lodf()
+    @testset "Full PTDF" _test_lazy_lodf(ptdf_type=:full)
+    @testset "Lazy PTDF" _test_lazy_lodf(ptdf_type=:lazy)
+end
+
+function _test_lazy_lodf(; ptdf_type)
     data = PM.make_basic_network(pglib("pglib_opf_case5_pjm"))
     network = FP.from_power_models(data)
     N = length(data["bus"])
@@ -67,7 +72,7 @@ function test_lazy_lodf()
         Φk = calc_basic_ptdf_matrix(data)
         pf_pm = Φk * p
         
-        FP.compute_flow!(pf_fp, p, pf0, L, k)
+        FP.compute_flow!(pf_fp, pf0, L, network.branches[k])
 
         @test isapprox(pf_pm, pf_fp, atol=1e-6)
 
