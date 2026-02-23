@@ -1,6 +1,6 @@
 function test_ptdf_full()
     data = PM.make_basic_network(pglib("pglib_opf_case14_ieee"))
-    network = FastPowerFlow.from_power_models(data)
+    network = AcceleratedDCPowerFlows.from_power_models(data)
     N = num_buses(network)
     E = num_branches(network)
     p = randn(N)
@@ -28,7 +28,7 @@ end
 
 function test_ptdf_lazy()
     data = PM.make_basic_network(pglib("pglib_opf_case14_ieee"))
-    network = FastPowerFlow.from_power_models(data)
+    network = AcceleratedDCPowerFlows.from_power_models(data)
     N = num_buses(network)
     E = num_branches(network)
 

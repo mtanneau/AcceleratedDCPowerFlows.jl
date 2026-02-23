@@ -1,4 +1,4 @@
-name = "FastPowerFlow"
+name = "AcceleratedDCPowerFlows"
 uuid = "c32744f1-403b-4af7-9195-1da907387c09"
 version = "0.1.0"
 authors = ["mtanneau3 <mtanneau3@gatech.edu>"]

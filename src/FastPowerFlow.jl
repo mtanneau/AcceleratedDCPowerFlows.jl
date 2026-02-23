@@ -1,4 +1,4 @@
-module FastPowerFlow
+module AcceleratedDCPowerFlows
 
 using BenchmarkTools
 using DataFrames
@@ -53,4 +53,4 @@ function BranchIncidenceMatrix(data::Dict)
     return BranchIncidenceMatrix(N, E, bus_fr, bus_to)
 end
 
-end # module FastPowerFlow
+end  # module

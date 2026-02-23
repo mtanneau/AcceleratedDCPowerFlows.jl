@@ -6,10 +6,10 @@ using PowerModels
 const PM = PowerModels
 using PGLib
 
-using FastPowerFlow
-const FP = FastPowerFlow
+using AcceleratedDCPowerFlows
+const FP = AcceleratedDCPowerFlows
 
-@testset "FastPowerFlow" begin
+@testset "AcceleratedDCPowerFlows" begin
     @testset "core" begin
         include("core/network.jl")
         include("core/branch_incidence_matrix.jl")

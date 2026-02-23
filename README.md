@@ -1,6 +1,6 @@
-# FastDCPowerFlows.jl
+# AcceleratedDCPowerFlows.jl
 
-This repository contains fast implementations of DC power flow computations.
+This repository contains accelerated implementations of DC power flow computations.
 The package currently supports:
 * PTDF matrix computation, and PTDF-based flow computation
 * LODF matrix computation, and LODF-based post-contingency flow computation

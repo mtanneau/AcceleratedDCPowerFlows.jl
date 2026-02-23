@@ -10,7 +10,7 @@ const PM = PowerModels
 PM.silence()
 using PGLib
 
-using FastPowerFlow
+using AcceleratedDCPowerFlows
 
 using BenchmarkTools
 using CSV
@@ -55,7 +55,7 @@ function benchmark_BA(data; K=16)
     println()
 
     # Fast implementation
-    Af = FastPowerFlow.BranchIncidenceMatrix(data)
+    Af = AcceleratedDCPowerFlows.BranchIncidenceMatrix(data)
     res3 = @benchmark bamul!($f, $Af, $b, $θ)
     println("case: $(data["name"]) ; K=$K ; fast A")
     display(res3)
@@ -81,7 +81,7 @@ function benchmark_BA(data; K=16)
     println()
 
     # Specialized matvec product on GPU
-    Af_d = FastPowerFlow.BranchIncidenceMatrixGPU(Af)
+    Af_d = AcceleratedDCPowerFlows.BranchIncidenceMatrixGPU(Af)
     res6 = @benchmark CUDA.@sync bamul!($f_d, $Af_d, $b_d, $θ_d)
     println("case: $(data["name"]) ; K=$K ; fast A (gpu)")
     display(res6)

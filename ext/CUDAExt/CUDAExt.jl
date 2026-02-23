@@ -1,7 +1,7 @@
 module CUDAExt
 
-using FastPowerFlow
-using FastPowerFlow: Network, BranchIncidenceMatrix
+using AcceleratedDCPowerFlows
+using AcceleratedDCPowerFlows: Network, BranchIncidenceMatrix
 
 using LinearAlgebra
 

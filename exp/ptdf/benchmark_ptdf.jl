@@ -8,7 +8,8 @@ PM.silence()
 using PGLib
 
 using CUDA
-using FastPowerFlow
+using AcceleratedDCPowerFlows
+const PF = AcceleratedDCPowerFlows
 
 using BenchmarkTools
 using CSV
@@ -26,11 +27,11 @@ function is_on_gpu(Φ)
     return isa(Φ.b, CuArray)
 end
 
-function form_ptdf(data, PTDF::Symbol, solver::Symbol, gpu::Bool)
+function form_ptdf(network, PTDF::Symbol, solver::Symbol, gpu::Bool)
     if PTDF == :full
-        return FullPTDF(data; solver=solver, gpu=gpu)
+        return FullPTDF(network; solver=solver, gpu=gpu)
     elseif PTDF == :lazy
-        return LazyPTDF(data; solver=solver, gpu=gpu)
+        return LazyPTDF(network; solver=solver, gpu=gpu)
     else
         throw(ArgumentError("PTDF must be either :full or :lazy"))
     end
@@ -38,10 +39,10 @@ end
 
 # Since forming a PTDF matrix may be (very!) costly,
 #   we conduct two benchmarks: one to form the matrix, the other to compute the flow
-function benchmark_ptdf(data, PTDF; solver, gpu, Ks=[1, 24, 96])
-    N = length(data["bus"])
-    E = length(data["branch"])
-    Φ = form_ptdf(data, PTDF, solver, gpu)
+function benchmark_ptdf(network, PTDF; solver, gpu, Ks=[1, 24, 96])
+    N = PF.num_buses(network)
+    E = PF.num_branches(network)
+    Φ = form_ptdf(network, PTDF, solver, gpu)
 
     # 
     gpu = is_on_gpu(Φ)
@@ -52,9 +53,9 @@ function benchmark_ptdf(data, PTDF; solver, gpu, Ks=[1, 24, 96])
 
     # Benchmark PTDF matrix computation
     res_matrix = if gpu
-        @benchmark begin CUDA.@sync form_ptdf($data, $PTDF, $solver, $gpu) end seconds=n_seconds
+        @benchmark begin CUDA.@sync form_ptdf($network, $PTDF, $solver, $gpu) end seconds=n_seconds
     else
-        @benchmark form_ptdf($data, $PTDF, $solver, $gpu) seconds=n_seconds
+        @benchmark form_ptdf($network, $PTDF, $solver, $gpu) seconds=n_seconds
     end
     println(typeof(Φ))
     display(res_matrix)
@@ -89,7 +90,7 @@ function benchmark_ptdf(data, PTDF; solver, gpu, Ks=[1, 24, 96])
     return res
 end
     
-function main_ptdf(data)
+function main_ptdf(network)
     df = DataFrame(
         :casename => String[],
         :num_bus => Int[],
@@ -104,8 +105,8 @@ function main_ptdf(data)
         :time_matvec_96 => Float64[],
     )
     
-    N = length(data["bus"])
-    E = length(data["branch"])
+    N = PF.num_buses(network)
+    E = PF.num_branches(network)
 
     for ptdf_type in [:full, :lazy], solver in [:klu, :ldlt], gpu in [false, true]
 
@@ -113,10 +114,10 @@ function main_ptdf(data)
         (N > 30_000) && gpu && ptdf_type == :full && continue  # Avoid OOM on GPU
 
         GC.gc()
-        res = benchmark_ptdf(data, ptdf_type; solver=solver, gpu=gpu, Ks=[1, 24, 96])
+        res = benchmark_ptdf(network, ptdf_type; solver=solver, gpu=gpu, Ks=[1, 24, 96])
 
         row = Dict(
-            :casename => data["name"],
+            :casename => PF.case_name(network),
             :num_bus => N,
             :num_branch => E,
             :ptdf_type => string(ptdf_type),
@@ -135,7 +136,15 @@ function main_ptdf(data)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    CASES = ["1354_pegase", "2869_pegase", "6470_rte", "9241_pegase", "13659_pegase", "30000_goc", "78484_epigrids"]
+    CASES = [
+        "1354_pegase", 
+        "2869_pegase",
+        "6470_rte", 
+        "9241_pegase", 
+        "13659_pegase", 
+        "30000_goc",
+        "78484_epigrids",
+    ]
 
     CASE_IDX = parse(Int, ARGS[1])
 
@@ -144,13 +153,14 @@ if abspath(PROGRAM_FILE) == @__FILE__
     resfile = joinpath(@__DIR__, "benchmark_PTDF_$(casename).csv")
 
     data = make_basic_network(pglib("pglib_opf_case" * casename))
+    network = from_power_models(data)
 
-    r = @benchmark calc_basic_incidence_matrix($data)
+    r = @benchmark PowerModels.calc_basic_incidence_matrix($data)
     println("Branch incidence matrix computation")
     display(r)
     println("\n\n")
 
-    df = main_ptdf(data)
+    df = main_ptdf(network)
 
     CSV.write(resfile, df)
 
