@@ -26,6 +26,7 @@ mutable struct Branch
 end
 
 struct Network
+    case_name::String
     buses::Vector{Bus}
     slack_bus_index::Int  # index of slack bus
 
@@ -34,6 +35,7 @@ end
 
 num_buses(network::Network) = length(network.buses)
 num_branches(network::Network) = length(network.branches)
+case_name(network::Network) = network.case_name
 
 """
     from_power_models(pmdata::Dict)
@@ -43,6 +45,7 @@ Build `Network` struct from PowerModels data dictionary.
 function from_power_models(pmdata::Dict)
     N = length(pmdata["bus"])
     E = length(pmdata["branch"])
+    case_name = get(pmdata, "name", "")
 
     # Start by extracting buses
     buses = Bus[]
@@ -103,6 +106,6 @@ function from_power_models(pmdata::Dict)
 
     slack_bus_index = pmidx2bus[iref_pm].index
 
-    network = Network(buses, slack_bus_index, branches)
+    network = Network(case_name, buses, slack_bus_index, branches)
     return network
 end

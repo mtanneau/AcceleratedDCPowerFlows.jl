@@ -20,6 +20,7 @@ function __init__()
 end
 
 export Network
+export BranchIncidenceMatrix
 export num_buses, num_branches
 export from_power_models
 export FullPTDF, LazyPTDF
