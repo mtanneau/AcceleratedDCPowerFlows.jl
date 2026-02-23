@@ -1,23 +1,10 @@
 module AcceleratedDCPowerFlows
 
-using BenchmarkTools
-using DataFrames
 using LinearAlgebra
 using SparseArrays
-using Statistics
 using SuiteSparse
 
-# PowerModels
-using PowerModels
-const PM = PowerModels
-using PGLib
-
-# CUDA stuff
 using KLU
-
-function __init__()
-    PM.silence()
-end
 
 export Network
 export BranchIncidenceMatrix

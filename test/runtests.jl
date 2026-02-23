@@ -4,6 +4,7 @@ using Test
 
 using PowerModels
 const PM = PowerModels
+PM.silence()
 using PGLib
 
 using AcceleratedDCPowerFlows

@@ -49,12 +49,20 @@ function from_power_models(pmdata::Dict)
 
     # Start by extracting buses
     buses = Bus[]
+    iref_pm = 0
     for pm_bus in values(pmdata["bus"])
         i::Int = pm_bus["index"]
         bus = Bus(i, true, 0.0)
         push!(buses, bus)
+        bus_type::Int = get(pm_bus, "bus_type", 0)
+        if bus_type == 3
+            # slack bus
+            if iref_pm > 0
+                @warn "Multiple slack buses: $(iref_pm) and $(i)"
+            end
+            iref_pm = i
+        end
     end
-    iref_pm::Int = PowerModels.reference_bus(pmdata)["index"]
     sort!(buses, by=bus->bus.index)
     pmidx2bus = Dict(bus.index => bus for bus in buses)
     # Now, go through loads and generators to grab injections
@@ -85,7 +93,8 @@ function from_power_models(pmdata::Dict)
     for pm_branch in values(pmdata["branch"])
         k::Int = pm_branch["index"]
         st::Bool = pm_branch["br_status"]
-        b::Float64 = PM.calc_branch_y(pm_branch)[2]
+        y::ComplexF64 = inv(pm_branch["br_r"] + im * pm_branch["br_x"])
+        b = imag(y)
         pmax::Float64 = pm_branch["rate_a"]
 
         # ⚠️ we convert PM bus indices before creating the branch
