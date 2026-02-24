@@ -23,4 +23,5 @@ CUDAExt = ["CUDA", "CUDSS"]
 [compat]
 CUDA = "5.9.6"
 CUDSS = "0.6.6"
+KLU = "0.6.0"
 MetaGraphsNext = "0.8.0"
