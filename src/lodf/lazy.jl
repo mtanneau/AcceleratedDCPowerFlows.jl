@@ -11,9 +11,6 @@ struct LazyLODF{SM,PTDF} <: AbstractLODF
 end
 
 function LazyLODF(network::Network; ptdf_type=:lazy, kwargs...)
-    islack = network.slack_bus_index
-    A = sparse(BranchIncidenceMatrix(network))
-    b = [-br.b for br in network.branches]
     if ptdf_type == :lazy
         Φ = LazyPTDF(network; kwargs...)
     elseif ptdf_type == :full
@@ -21,11 +18,21 @@ function LazyLODF(network::Network; ptdf_type=:lazy, kwargs...)
     else
         throw(ErrorException("Invalid PTDF type: $ptdf_type; only :lazy and :full are supported"))
     end
-    return LazyLODF(Φ.N, Φ.E, islack, A, b, Φ)
+
+    return LazyLODF(network, Φ)
 end
 
-function LazyLODF(Φ::LazyPTDF)
-    return LazyLODF(Φ.N, Φ.E, Φ.islack, Φ.A, b, Φ)
+function LazyLODF(network::Network, Φ::AbstractPTDF)
+    A = BranchIncidenceMatrix(network)
+    b = [-br.b for br in network.branches]
+    return LazyLODF(
+        num_buses(network), 
+        num_branches(network), 
+        network.slack_bus_index, 
+        A, 
+        b, 
+        Φ,
+    )
 end
 
 function compute_flow!(pfc, pf0::Vector, L::LazyLODF{SM,<:FullPTDF}, br::Branch) where{SM}
