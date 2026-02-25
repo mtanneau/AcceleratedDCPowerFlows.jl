@@ -5,15 +5,16 @@ struct FullLODF{M} <: AbstractLODF
 end
 
 function FullLODF(network::Network)
-    Φ = LazyPTDF(network)
+    Φ = lazy_ptdf(network)
     N = num_buses(network)
     i0 = network.slack_bus_index
 
     A = sparse(branch_incidence_matrix(KA.CPU(), network))
+    b = [-br.b for br in network.branches]
     At = Matrix(A')
     _M = (Φ.F \ At)
     _M[i0, :] .= 0  # ⚠ need to zero-out slack bus angle
-    M = Φ.BA * _M
+    M = (Diagonal(b) * A) * _M
     d = inv.(1 .- diag(M))
     d .*= (abs.(d) .<= 1e8)
     D = Diagonal(d)

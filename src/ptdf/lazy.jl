@@ -6,15 +6,13 @@ Lazy data structure for PTDF matrix.
 Instead of forming the (dense) PTDF matrix, this approach
     only stores a sparse factorization of 
 """
-struct LazyPTDF{TF,TA,V,SM} <: AbstractPTDF
+struct LazyPTDF{TA,V,TF} <: AbstractPTDF
     N::Int  # number of buses
     E::Int  # number of branches
     islack::Int  # Index of slack bus
 
     A::TA   # incidence matrix
     b::V    # branch susceptances (negated)
-    BA::SM  # B*A (negated)
-    Y::SM   # Y = A'BA (nodal admittance matrix, negated)
 
     F::TF   # Factorization of Y. Must be able to solve linear systems with F \ p
             # ⚠ We use a factorization of -(AᵀBA) to support cholesky factorization when possible
@@ -23,36 +21,48 @@ struct LazyPTDF{TF,TA,V,SM} <: AbstractPTDF
     # TODO: cache
 end
 
-function LazyPTDF(network::Network; solver::Symbol=:ldlt, gpu=false)
+KA.get_backend(M::LazyPTDF) = KA.get_backend(M.A)
+
+function lazy_ptdf(bkd::KA.CPU, network::Network; linear_solver=:auto)
     N = num_buses(network)
     E = num_branches(network)
-    A = sparse(branch_incidence_matrix(KA.CPU(), network))
-    b = [-br.b for br in network.branches]
-    # TODO: move to GPU here, instead of forming Y on CPU
-    B = Diagonal(b)
-    BA = B * A
-    Y = A' * BA
-    ref_idx = network.slack_bus_index
-    Y[ref_idx, :] .= 0.0
-    Y[:, ref_idx] .= 0.0
-    Y[ref_idx, ref_idx] = 1.0
+    islack = network.slack_bus_index
 
-    if gpu
-        A = CUDA.CUSPARSE.CuSparseMatrixCSR(A)
-        b = CuArray(b)
-        BA = CUDA.CUSPARSE.CuSparseMatrixCSR(BA)
-        Y = CUDA.CUSPARSE.CuSparseMatrixCSR(Y)
+    # Build nodal admittance matrix
+    # TODO: build it directly
+    A = branch_incidence_matrix(bkd, network)
+    A_sparse = SparseArrays.sparse(A)  
+
+    # ⚠ we negate the susceptance here
+    #    so that AᵀBA is positive definite
+    b = [-br.b for br in network.branches]
+    bmin = minimum(b)
+    B = Diagonal(b)
+    BA = B * A_sparse
+    Y = A_sparse' * BA
+    Y[islack, :] .= 0.0
+    Y[:, islack] .= 0.0
+    Y[islack, islack] = 1.0
+
+    opfact = if (linear_solver == :auto) || (linear_solver == :SuiteSparse)
+        if bmin >= 0.0
+            LinearAlgebra.cholesky
+        else
+            LinearAlgebra.ldlt
+        end
+    elseif linear_solver == :KLU
+        KLU.klu
     else
-        A = branch_incidence_matrix(KA.CPU(), network)
+        error("""Unsupported CPU linear solver for full PTDF: $(linear_solver).
+        Supported options are: `:KLU` and `:SuiteSparse`""")
     end
 
-    gpu && (solver == :klu) && error("KLU is not supported on GPU")
-
-    opfact = _linear_solver(solver)
     F = opfact(Y)
 
-    return LazyPTDF(N, E, ref_idx, A, b, BA, Y, F)
+    return LazyPTDF(N, E, islack, A, b, F)
 end
+
+lazy_ptdf(network::Network; kwargs...) = lazy_ptdf(DefaultBackend(), network; kwargs...)
 
 """
     compute_flow_lazy!(pf, pg, Φ::LazyPTDF)
