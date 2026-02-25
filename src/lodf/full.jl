@@ -4,30 +4,41 @@ struct FullLODF{M} <: AbstractLODF
     matrix::M
 end
 
-function FullLODF(network::Network)
-    Φ = lazy_ptdf(network)
+KA.get_backend(L::FullLODF) = KA.get_backend(L.matrix)
+
+function full_lodf(bkd::KA.CPU, network::Network; kwargs...)
+    # TODO: how should we handle bridges?
+
     N = num_buses(network)
+    E = num_branches(network)
     i0 = network.slack_bus_index
 
-    A = sparse(branch_incidence_matrix(KA.CPU(), network))
+    # Build a lazy PTDF to get factorization of nodal admittance matrix
+    Φ = lazy_ptdf(bkd, network; linear_solver=:auto)
+
+    A = sparse(branch_incidence_matrix(bkd, network))
     b = [-br.b for br in network.branches]
     At = Matrix(A')
     _M = (Φ.F \ At)
     _M[i0, :] .= 0  # ⚠ need to zero-out slack bus angle
     M = (Diagonal(b) * A) * _M
     d = inv.(1 .- diag(M))
-    d .*= (abs.(d) .<= 1e8)
+    # zero-out entries of `d` corresponding to bridges
+    is_bridge = find_bridges(network)
+    d .*= (.!is_bridge)
     D = Diagonal(d)
-    rmul!(M, D)
+    rmul!(M, D)  # M ← M * D
 
     # Set diagonal elements to -1
     # --> this ensures that post-contingency flow on tripped branch is zero
-    for i in 1:Φ.E
+    @inbounds @simd for i in 1:E
         M[i, i] = -1
     end
 
-    return FullLODF(Φ.N, Φ.E, M)
+    return FullLODF(N, E, M)
 end
+
+full_lodf(network::Network; kwargs...) = full_lodf(DefaultBackend(), network; kwargs...)
 
 """
     compute_flow!(pfc, p, pf0, L::FullLODF, c::Int)
