@@ -1,3 +1,17 @@
+"""
+    find_bridges(network::Network)
+
+Identify branches that are bridges in the network.
+
+A branch is a bridge if removing it would increase the number of connected components.
+
+!!! info
+    Bridge computation is agnostic to branch orientation.
+
+# Returns
+* `b::Vector{Bool}` a vector of size `E`, where `E` is the number of branches,
+    such that `b[e]` is `true` if and only if branch `e` is a bridge.
+"""
 function find_bridges(network::Network)
     N = num_buses(network)
     E = num_branches(network)
