@@ -1,5 +1,7 @@
 # AcceleratedDCPowerFlows.jl
 
+[![codecov](https://codecov.io/gh/mtanneau/AcceleratedDCPowerFlows.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/mtanneau/AcceleratedDCPowerFlows.jl)
+
 This repository contains accelerated implementations of DC power flow computations.
 The package currently supports:
 * PTDF matrix computation, and PTDF-based flow computation
@@ -11,4 +13,22 @@ Lazy implementations provide substantial time and memory savings as they avoid f
 
 ## GPU acceleration
 
-The package supports GPU acceleration on CUDA-compatible GPUs.
+The package supports GPU acceleration.
+At the moment, only CUDA devices are supported.
+
+To perform an operation on the GPU, specify the backend as follows
+```julia
+network = ...  # build network data structure
+
+A = branch_incidence_matrix(network)  # defaults to CPU
+
+# Explicitly request CPU
+using KernelAbstractions
+A = branch_incidence_matrix(CPU(), network)
+
+# Build on CUDA GPU (if available)
+using CUDA, CUDSS  # we need both CUDA and CUDSS to be loaded
+                   # in order to load CUDA extensions
+A = branch_incidence_matrix(CUDA.CUDABackend(), network)
+get_backend(A)     # CUDA.CUDABackend
+```
