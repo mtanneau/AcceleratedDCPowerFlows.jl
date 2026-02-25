@@ -16,12 +16,6 @@ using CUDA
 using CUDSS
 
 function runtests()
-    if !CUDA.functional()
-        @info "Non-CUDA machine, skipping CUDAExt tests"
-        @test_skip true
-        return nothing
-    end
-    
     for name in names(@__MODULE__; all = true)
         if startswith("$(name)", "test_")
             @testset "$(name)" begin

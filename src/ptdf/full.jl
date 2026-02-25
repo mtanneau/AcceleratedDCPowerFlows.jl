@@ -13,49 +13,53 @@ struct FullPTDF{D,TA,V} <: AbstractPTDF
     b::V     # branch susceptances (negated)
 end
 
-function FullPTDF(network::Network; solver=:ldlt, gpu=false)
+KA.get_backend(M::FullPTDF) = KA.get_backend(M.Yinv)
+
+function full_ptdf(bkd::KA.CPU, network::Network; linear_solver=:auto)
     N = num_buses(network)
     E = num_branches(network)
-    A = sparse(branch_incidence_matrix(KA.CPU(), network))
+    islack = network.slack_bus_index
+
+    # Build nodal admittance matrix
+    # TODO: build it directly
+    A = branch_incidence_matrix(bkd, network)
+    A_sparse = SparseArrays.sparse(A)  
+
     # ⚠ we negate the susceptance here
     #    so that AᵀBA is positive definite
     b = [-br.b for br in network.branches]
+    bmin = minimum(b)
     B = Diagonal(b)
-    BA = B * A
-    Y = A' * BA
-    ref_idx = network.slack_bus_index
-    Y[ref_idx, :] .= 0.0
-    Y[:, ref_idx] .= 0.0
-    Y[ref_idx, ref_idx] = 1.0
+    BA = B * A_sparse
+    Y = A_sparse' * BA
+    Y[islack, :] .= 0.0
+    Y[:, islack] .= 0.0
+    Y[islack, islack] = 1.0
 
-    opfact = _linear_solver(solver)
-
-    # TODO: droptol
-    # TODO: allow lower precision
-
-    if gpu
-        Y = CUDA.CUSPARSE.CuSparseMatrixCSR(Y)
-
-        # TODO: fast matvac product with `A` on GPU
-        A = CUDA.CUSPARSE.CuSparseMatrixCSR(A)
-        b = CuArray(b)
-
-        F = opfact(Y)
-        cI = CuMatrix(1.0I, N, N)
-        Yinv = F \ cI
-        Yinv[ref_idx, :] .= 0
-        
-        return FullPTDF(N, E, Yinv, A, b)
+    # Which factorization should we use?
+    opfact = if (linear_solver == :auto) || (linear_solver == :SuiteSparse)
+        if bmin >= 0.0
+            LinearAlgebra.cholesky
+        else
+            LinearAlgebra.ldlt
+        end
+    elseif linear_solver == :KLU
+        KLU.klu
     else
-        F = opfact(Y)
-        Yinv = F \ Matrix(1.0I, N, N)
-        Yinv[ref_idx, :] .= 0
-
-        A = branch_incidence_matrix(KA.CPU(), network)
-        
-        return FullPTDF(N, E, Yinv, A, b)
+        error("""Unsupported CPU linear solver for full PTDF: $(linear_solver).
+        Supported options are: `:KLU` and `:SuiteSparse`""")
     end
+
+    # Form matrix inverse
+    F = opfact(Y)
+    Yinv = F \ Matrix(1.0I, N, N)
+    Yinv[islack, :] .= 0
+
+    return FullPTDF(N, E, Yinv, A, b)
 end
+
+# The following implementations are already backend- and shape- agnostic,
+#   so should not need to be extended.
 
 """
     compute_flow!(pf, pg, Φ::FullPTDF)

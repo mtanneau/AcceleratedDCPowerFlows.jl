@@ -17,6 +17,9 @@ export FullPTDF, LazyPTDF
 export FullLODF, LazyLODF
 export compute_flow!
 
+# Some global definitions
+DefaultBackend() = KA.CPU()
+
 include("core/network.jl")
 include("core/branch_incidence_matrix.jl")
 include("graphs.jl")
