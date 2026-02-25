@@ -62,8 +62,6 @@ function lazy_ptdf(bkd::KA.CPU, network::Network; linear_solver=:auto)
     return LazyPTDF(N, E, islack, A, b, F)
 end
 
-lazy_ptdf(network::Network; kwargs...) = lazy_ptdf(DefaultBackend(), network; kwargs...)
-
 """
     compute_flow_lazy!(pf, pg, Φ::LazyPTDF)
 

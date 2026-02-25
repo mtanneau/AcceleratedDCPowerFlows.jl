@@ -14,5 +14,9 @@ function lodf(network::Network;
     end
 end
 
+# This should be the only place where we don't specify a backend
+full_lodf(network; kwargs...) = lodf(network; lodf_type=:full, kwargs...)
+lazy_lodf(network; kwargs...) = lodf(network; lodf_type=:lazy, kwargs...)
+
 include("full.jl")
 include("lazy.jl")

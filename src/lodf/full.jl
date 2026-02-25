@@ -38,8 +38,6 @@ function full_lodf(bkd::KA.CPU, network::Network; kwargs...)
     return FullLODF(N, E, M)
 end
 
-full_lodf(network::Network; kwargs...) = full_lodf(DefaultBackend(), network; kwargs...)
-
 """
     compute_flow!(pfc, p, pf0, L::FullLODF, c::Int)
 
