@@ -51,7 +51,7 @@ end
 
 branch_incidence_matrix(network::Network) = branch_incidence_matrix(KA.CPU(), network)
 
-function SparseArrays.sparse(::KA.CPU, A::BranchIncidenceMatrix)
+function SparseArrays.sparse(A::BranchIncidenceMatrix)
     E, N = size(A)
     Is = zeros(Int, 2*E)
     Js = zeros(Int, 2*E)
@@ -70,13 +70,7 @@ function SparseArrays.sparse(::KA.CPU, A::BranchIncidenceMatrix)
     return SparseArrays.sparse(Is, Js, Vs, E, N)
 end
 
-SparseArrays.sparse(A::BranchIncidenceMatrix) = SparseArrays.sparse(KA.get_backend(A), A)
-
 function LinearAlgebra.mul!(y::AbstractVecOrMat, A::BranchIncidenceMatrix, x::AbstractVecOrMat)
-    return LinearAlgebra.mul!(get_backend(A), y, A, x)
-end
-
-function LinearAlgebra.mul!(::KA.CPU, y::AbstractVecOrMat, A::BranchIncidenceMatrix, x::AbstractVecOrMat)
     E, N = size(A)
     K = size(y, 2)
 

@@ -12,9 +12,9 @@ end
 
 function LazyLODF(network::Network; ptdf_type=:lazy, kwargs...)
     if ptdf_type == :lazy
-        Φ = LazyPTDF(network; kwargs...)
+        Φ = lazy_ptdf(network; kwargs...)
     elseif ptdf_type == :full
-        Φ = FullPTDF(network; kwargs...)
+        Φ = full_ptdf(network; kwargs...)
     else
         throw(ErrorException("Invalid PTDF type: $ptdf_type; only :lazy and :full are supported"))
     end
