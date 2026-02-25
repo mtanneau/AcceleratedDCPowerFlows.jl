@@ -1,8 +1,8 @@
 function test_ptdf_full()
     data = PM.make_basic_network(pglib("pglib_opf_case14_ieee"))
-    network = AcceleratedDCPowerFlows.from_power_models(data)
-    N = num_buses(network)
-    E = num_branches(network)
+    network = APF.from_power_models(data)
+    N = APF.num_buses(network)
+    E = APF.num_branches(network)
     p = randn(N)
     f = zeros(E)
 
@@ -11,8 +11,8 @@ function test_ptdf_full()
     fpm = Φ_pm * p  # power flows, computed with PowerModels
     
     # Form PTDF and compute power flows
-    Φ = FP.FullPTDF(network; gpu=false)
-    FP.compute_flow!(f, p, Φ)  
+    Φ = APF.FullPTDF(network; gpu=false)
+    APF.compute_flow!(f, p, Φ)  
     @test isapprox(f, fpm; atol=1e-6)
 
     # Check again with batched mode
@@ -20,7 +20,7 @@ function test_ptdf_full()
     p = randn(N, K)
     f = zeros(E, K)
     fpm = Φ_pm * p
-    FP.compute_flow!(f, p, Φ)
+    APF.compute_flow!(f, p, Φ)
     @test isapprox(f, fpm; atol=1e-6)
 
     return nothing

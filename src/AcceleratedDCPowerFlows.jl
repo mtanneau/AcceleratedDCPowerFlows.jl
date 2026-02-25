@@ -5,6 +5,7 @@ using SparseArrays
 using SuiteSparse
 
 import KernelAbstractions as KA
+using KernelAbstractions: get_backend
 
 using KLU
 

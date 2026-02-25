@@ -16,7 +16,7 @@ end
 function FullPTDF(network::Network; solver=:ldlt, gpu=false)
     N = num_buses(network)
     E = num_branches(network)
-    A = sparse(BranchIncidenceMatrix(network))
+    A = sparse(branch_incidence_matrix(KA.CPU(), network))
     # ⚠ we negate the susceptance here
     #    so that AᵀBA is positive definite
     b = [-br.b for br in network.branches]
@@ -51,7 +51,7 @@ function FullPTDF(network::Network; solver=:ldlt, gpu=false)
         Yinv = F \ Matrix(1.0I, N, N)
         Yinv[ref_idx, :] .= 0
 
-        A = BranchIncidenceMatrix(network)
+        A = branch_incidence_matrix(KA.CPU(), network)
         
         return FullPTDF(N, E, Yinv, A, b)
     end

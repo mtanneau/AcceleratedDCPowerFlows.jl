@@ -2,13 +2,12 @@ using LinearAlgebra
 using Random
 using Test
 
-using PowerModels
-const PM = PowerModels
+import PowerModels as PM
 PM.silence()
 using PGLib
 
-using AcceleratedDCPowerFlows
-const FP = AcceleratedDCPowerFlows
+import AcceleratedDCPowerFlows as APF
+import KernelAbstractions as KA
 
 @testset "AcceleratedDCPowerFlows" begin
     @testset "core" begin
@@ -22,5 +21,11 @@ const FP = AcceleratedDCPowerFlows
 
     @testset "LODF" begin
         include("lodf/lodf.jl")
+    end
+end
+
+@testset "Extensions" begin
+    @testset "CUDAExt" begin
+        include("ext/CUDAExt/CUDAExt.jl")
     end
 end

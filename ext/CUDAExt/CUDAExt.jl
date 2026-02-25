@@ -33,8 +33,8 @@ function _mul_kernel!(y, bus_fr, bus_to, x)
     return nothing
 end
 
-function LinearAlgebra.mul!(y::CuVecOrMat, A::APF.BranchIncidenceMatrix{CuVector{<:Integer}}, x::CuVecOrMat)
-    E, N = A.E, A.N
+function LinearAlgebra.mul!(::CUDA.CUDABackend, y, A::APF.BranchIncidenceMatrix, x)
+    E, N = size(A)
     K = size(y, 2)
     size(y, 1) == E || throw(DimensionMismatch("A has size $(size(A)) but y has size $(size(y))"))
     size(x, 1) == N || throw(DimensionMismatch("A has size $(size(A)) but x has size $(size(y))"))

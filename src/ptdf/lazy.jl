@@ -26,7 +26,7 @@ end
 function LazyPTDF(network::Network; solver::Symbol=:ldlt, gpu=false)
     N = num_buses(network)
     E = num_branches(network)
-    A = sparse(BranchIncidenceMatrix(network))
+    A = sparse(branch_incidence_matrix(KA.CPU(), network))
     b = [-br.b for br in network.branches]
     # TODO: move to GPU here, instead of forming Y on CPU
     B = Diagonal(b)
@@ -43,7 +43,7 @@ function LazyPTDF(network::Network; solver::Symbol=:ldlt, gpu=false)
         BA = CUDA.CUSPARSE.CuSparseMatrixCSR(BA)
         Y = CUDA.CUSPARSE.CuSparseMatrixCSR(Y)
     else
-        A = BranchIncidenceMatrix(network)
+        A = branch_incidence_matrix(KA.CPU(), network)
     end
 
     gpu && (solver == :klu) && error("KLU is not supported on GPU")

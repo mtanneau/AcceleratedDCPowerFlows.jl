@@ -23,7 +23,7 @@ function LazyLODF(network::Network; ptdf_type=:lazy, kwargs...)
 end
 
 function LazyLODF(network::Network, Φ::AbstractPTDF)
-    A = BranchIncidenceMatrix(network)
+    A = branch_incidence_matrix(KA.CPU(), network)
     b = [-br.b for br in network.branches]
     return LazyLODF(
         num_buses(network), 

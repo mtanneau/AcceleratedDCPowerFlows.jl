@@ -9,7 +9,7 @@ function FullLODF(network::Network)
     N = num_buses(network)
     i0 = network.slack_bus_index
 
-    A = sparse(BranchIncidenceMatrix(network))
+    A = sparse(branch_incidence_matrix(KA.CPU(), network))
     At = Matrix(A')
     _M = (Φ.F \ At)
     _M[i0, :] .= 0  # ⚠ need to zero-out slack bus angle
