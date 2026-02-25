@@ -26,6 +26,19 @@ end
 
 @testset "Extensions" begin
     @testset "CUDAExt" begin
-        include("ext/CUDAExt/CUDAExt.jl")
+        run_cuda_tests = try
+            using CUDA
+            CUDA.functional()
+        catch err
+            # Something went wrong, skip the tests
+            false
+        end
+
+        if run_cuda_tests
+            include("ext/CUDAExt/CUDAExt.jl")
+        else
+            @info "CUDA not functional, skipping tests"
+            @test_skip true
+        end
     end
 end
