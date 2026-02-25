@@ -13,7 +13,7 @@ function test_full_lodf()
     pf0 = Φ * p
 
     # Compute LODF
-    L = APF.FullLODF(network)
+    L = APF.lodf(network; lodf_type=:full)
 
     pf_pm = zeros(E, K)
     pf_fp = zeros(E, K)

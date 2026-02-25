@@ -58,8 +58,6 @@ function full_ptdf(bkd::KA.CPU, network::Network; linear_solver=:auto)
     return FullPTDF(N, E, Yinv, A, b)
 end
 
-full_ptdf(network::Network; kwargs...) = full_ptdf(DefaultBackend(), network; kwargs...)
-
 # The following implementations are already backend- and shape- agnostic,
 #   so should not need to be extended.
 

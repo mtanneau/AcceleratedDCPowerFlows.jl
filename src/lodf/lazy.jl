@@ -1,29 +1,31 @@
-struct LazyLODF{SM,PTDF} <: AbstractLODF
+struct LazyLODF{SM,V,PTDF} <: AbstractLODF
     N::Int
     E::Int
 
     # Some network info
     islack::Int
     A::SM
-    b::Vector{Float64}
+    b::V
     
     Φ::PTDF
 end
 
-function LazyLODF(network::Network; ptdf_type=:lazy, kwargs...)
+KA.get_backend(L::LazyLODF) = KA.get_backend(L.Φ)
+
+function lazy_lodf(bkd::KA.CPU, network::Network; ptdf_type=:lazy, kwargs...)
     if ptdf_type == :lazy
-        Φ = lazy_ptdf(network; kwargs...)
+        Φ = lazy_ptdf(bkd, network; kwargs...)
     elseif ptdf_type == :full
-        Φ = full_ptdf(network; kwargs...)
+        Φ = full_ptdf(bkd, network; kwargs...)
     else
         throw(ErrorException("Invalid PTDF type: $ptdf_type; only :lazy and :full are supported"))
     end
 
-    return LazyLODF(network, Φ)
+    return lazy_lodf(bkd, network, Φ)
 end
 
-function LazyLODF(network::Network, Φ::AbstractPTDF)
-    A = branch_incidence_matrix(KA.CPU(), network)
+function lazy_lodf(bkd::KA.CPU, network::Network, Φ::AbstractPTDF)
+    A = branch_incidence_matrix(bkd, network)
     b = [-br.b for br in network.branches]
     return LazyLODF(
         num_buses(network), 
@@ -35,7 +37,14 @@ function LazyLODF(network::Network, Φ::AbstractPTDF)
     )
 end
 
-function compute_flow!(pfc, pf0::Vector, L::LazyLODF{SM,<:FullPTDF}, br::Branch) where{SM}
+# To compute post-contingency flows using a lazy LODF approach,
+#   one needs to compute the difference between two columns 
+#   of the inverse nodal admittance matrix, i.e., `(Y⁻¹)ᵢ - (Y⁻¹)ⱼ`
+# The only implementation difference between sub-types of LazyLODF
+#   is how this difference is computed, everything else is basically
+#   the same
+
+function compute_flow!(pfc, pf0::Vector, L::LazyLODF{SM,V,<:FullPTDF}, br::Branch) where{SM,V}
     i0 = L.islack
     Φ = L.Φ
 
@@ -62,7 +71,7 @@ function compute_flow!(pfc, pf0::Vector, L::LazyLODF{SM,<:FullPTDF}, br::Branch)
     return pfc
 end
 
-function compute_flow!(pfc, pf0::Vector, L::LazyLODF{SM,<:LazyPTDF}, br::Branch) where{SM}
+function compute_flow!(pfc, pf0::Vector, L::LazyLODF{SM,V,<:LazyPTDF}, br::Branch) where{SM,V}
     i0 = L.islack
     Φ = L.Φ
 

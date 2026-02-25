@@ -18,7 +18,7 @@ function _test_lazy_lodf(; ptdf_type)
     pf0 = Φ * p
 
     # Compute LODF
-    L = APF.LazyLODF(network)
+    L = APF.lazy_lodf(network)
     pf_fp = zeros(E)
 
     for (i, k) in enumerate(outages)

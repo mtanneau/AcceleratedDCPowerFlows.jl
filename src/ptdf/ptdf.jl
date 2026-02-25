@@ -14,5 +14,9 @@ function ptdf(network::Network;
     end
 end
 
+# This should be the only place where we don't specify a backend
+full_ptdf(network::Network; kwargs...) = ptdf(network; ptdf_type=:full, kwargs...)
+lazy_ptdf(network::Network; kwargs...) = ptdf(network; ptdf_type=:lazy, kwargs...)
+
 include("full.jl")
 include("lazy.jl")

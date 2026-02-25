@@ -15,8 +15,8 @@ export Network
 export BranchIncidenceMatrix
 export num_buses, num_branches
 export from_power_models
-export FullPTDF, LazyPTDF
-export FullLODF, LazyLODF
+export ptdf, full_ptdf, lazy_ptdf
+export lodf, full_lodf, lazy_lodf
 export compute_flow!
 
 # Some global definitions
