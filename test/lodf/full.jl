@@ -5,7 +5,7 @@ function test_full_lodf()
     E = length(data["branch"])
     p = real.(PM.calc_basic_bus_injection(data))
 
-    is_bridge = APF.find_bridges(data)
+    is_bridge = APF.find_bridges(network)
     outages = collect(1:E)[.! is_bridge]
     K = length(outages)
 

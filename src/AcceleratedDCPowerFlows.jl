@@ -4,6 +4,8 @@ using LinearAlgebra
 using SparseArrays
 using SuiteSparse
 
+using Graphs
+
 import KernelAbstractions as KA
 using KernelAbstractions: get_backend
 
@@ -22,7 +24,7 @@ DefaultBackend() = KA.CPU()
 
 include("core/network.jl")
 include("core/branch_incidence_matrix.jl")
-include("graphs.jl")
+include("graph/bridges.jl")
 include("ptdf/ptdf.jl")
 include("lodf/lodf.jl")
 

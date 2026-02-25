@@ -15,6 +15,10 @@ import KernelAbstractions as KA
         include("core/branch_incidence_matrix.jl")
     end
 
+    @testset "graph" begin
+        include("graph/bridges.jl")
+    end
+
     @testset "PTDF" begin
         include("ptdf/ptdf.jl")
     end
