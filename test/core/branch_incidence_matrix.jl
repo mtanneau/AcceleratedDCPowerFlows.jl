@@ -5,8 +5,11 @@ function test_branch_incidence_matrix()
     E = length(data["branch"])
 
     A = APF.branch_incidence_matrix(network)
-    @test A.N == N
-    @test A.E == E
+    @test size(A) == (E, N)
+    @test size(A, 1) == E
+    @test size(A, 2) == N
+    @test size(A, 3) == size(A, 4) == 1
+    @test_throws ErrorException size(A, 0)
 
     # Reference implementation
     A_pm = PM.calc_basic_incidence_matrix(data)
