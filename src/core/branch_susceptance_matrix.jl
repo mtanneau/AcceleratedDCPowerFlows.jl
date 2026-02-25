@@ -1,26 +1,23 @@
-import Base.size
-import LinearAlgebra.mul!
-import SparseArrays: sparse
-
 """
-    BranchIncidenceMatrix{V}
+    BranchSusceptanceMatrix{V}
 
-Efficient data structure for representing the branch indicence matrix of a power grid.
+Efficient data structure for representing the branch susceptance matrix of a power grid.
 
-A[k, i] = +1 if branch k starts at bus i
-        = -1 if branch k ends at bus j
+A[k, i] = +bₖ if branch k starts at bus i
+        = -bₖ if branch k ends at bus j
         =  0 otherwise
 """
-struct BranchIncidenceMatrix{V}
+struct BranchSusceptanceMatrix{Vi,Vf}
     N::Int
     E::Int
 
-    bus_fr::V
-    bus_to::V
+    bus_fr::Vi
+    bus_to::Vi
+    br_b::Vf
 end
 
-Base.size(A::BranchIncidenceMatrix) = (A.E, A.N)
-function Base.size(A::BranchIncidenceMatrix, d::Integer)
+Base.size(A::BranchSusceptanceMatrix) = (A.E, A.N)
+function Base.size(A::BranchSusceptanceMatrix, d::Integer)
     s = size(A)
     if d == 1 || d == 2
         return s[d]
@@ -31,27 +28,28 @@ function Base.size(A::BranchIncidenceMatrix, d::Integer)
     end
 end
 
-KA.get_backend(A::BranchIncidenceMatrix) = KA.get_backend(A.bus_fr)
+KA.get_backend(A::BranchSusceptanceMatrix) = KA.get_backend(A.bus_fr)
 
 """
-    branch_incidence_matrix([backend], network::Network)
+    branch_susceptance_matrix([backend], network::Network)
 
-Build branch incidence matrix on the specified backend.
+Build branch susceptance matrix on the specified backend.
 Defaults to cpu if no backend is provided.
 """
-function branch_incidence_matrix(::KA.CPU, network::Network)
+function branch_susceptance_matrix(::KA.CPU, network::Network)
     N = num_buses(network)
     E = num_branches(network)
 
     bus_fr = [br.bus_fr for br in network.branches]
     bus_to = [br.bus_to for br in network.branches]
+    br_b = [br.b for br in network.branches]
 
-    return BranchIncidenceMatrix(N, E, bus_fr, bus_to)
+    return BranchSusceptanceMatrix(N, E, bus_fr, bus_to, br_b)
 end
 
-branch_incidence_matrix(network::Network) = branch_incidence_matrix(DefaultBackend(), network)
+branch_susceptance_matrix(network::Network) = branch_susceptance_matrix(DefaultBackend(), network)
 
-function SparseArrays.sparse(A::BranchIncidenceMatrix)
+function SparseArrays.sparse(A::BranchSusceptanceMatrix)
     E, N = size(A)
     Is = zeros(Int, 2*E)
     Js = zeros(Int, 2*E)
@@ -62,15 +60,15 @@ function SparseArrays.sparse(A::BranchIncidenceMatrix)
         j = A.bus_to[e]
         Is[2*e-1] = e
         Js[2*e-1] = i
-        Vs[2*e-1] = +1.0
+        Vs[2*e-1] = +A.br_b[e]
         Is[2*e+0] = e
         Js[2*e+0] = j
-        Vs[2*e+0] = -1.0
+        Vs[2*e+0] = -A.br_b[e]
     end
     return SparseArrays.sparse(Is, Js, Vs, E, N)
 end
 
-function LinearAlgebra.mul!(y::AbstractVecOrMat, A::BranchIncidenceMatrix, x::AbstractVecOrMat)
+function LinearAlgebra.mul!(y::AbstractVecOrMat, A::BranchSusceptanceMatrix, x::AbstractVecOrMat)
     E, N = size(A)
     K = size(y, 2)
 
@@ -82,7 +80,7 @@ function LinearAlgebra.mul!(y::AbstractVecOrMat, A::BranchIncidenceMatrix, x::Ab
         for e in 1:E
             i = A.bus_fr[e]
             j = A.bus_to[e]
-            y[e,k] = x[i,k] - x[j,k]
+            y[e,k] = A.br_b[e] * (x[i,k] - x[j,k])
         end
     end
     return y

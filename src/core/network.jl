@@ -118,3 +118,6 @@ function from_power_models(pmdata::Dict)
     network = Network(case_name, buses, slack_bus_index, branches)
     return network
 end
+
+include("branch_incidence_matrix.jl")
+include("branch_susceptance_matrix.jl")

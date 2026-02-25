@@ -1,5 +1,6 @@
 using LinearAlgebra
 using Random
+using SparseArrays
 using Test
 
 import PowerModels as PM
@@ -13,6 +14,7 @@ import KernelAbstractions as KA
     @testset "core" begin
         include("core/network.jl")
         include("core/branch_incidence_matrix.jl")
+        include("core/branch_susceptance_matrix.jl")
     end
 
     @testset "graph" begin
