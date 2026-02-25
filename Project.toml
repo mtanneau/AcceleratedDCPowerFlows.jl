@@ -6,6 +6,7 @@ authors = ["mtanneau3 <mtanneau3@gatech.edu>"]
 [deps]
 Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
 KLU = "ef3ab10e-7fda-4108-b977-705223b18434"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MetaGraphsNext = "fa8bd995-216d-47f1-8a91-f3b68fbeb377"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
@@ -24,4 +25,5 @@ CUDAExt = ["CUDA", "CUDSS"]
 CUDA = "5.9.6"
 CUDSS = "0.6.6"
 KLU = "0.6.0"
+KernelAbstractions = "0.9.40"
 MetaGraphsNext = "0.8.0"

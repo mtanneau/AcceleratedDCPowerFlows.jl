@@ -1,8 +1,8 @@
 function test_ptdf_lazy()
     data = PM.make_basic_network(pglib("pglib_opf_case14_ieee"))
-    network = AcceleratedDCPowerFlows.from_power_models(data)
-    N = num_buses(network)
-    E = num_branches(network)
+    network = APF.from_power_models(data)
+    N = APF.num_buses(network)
+    E = APF.num_branches(network)
 
     p = randn(N)
     f = zeros(E)
@@ -17,14 +17,14 @@ function test_ptdf_lazy()
     f_batch_pm = Φ_pm * p_batch
     
     @testset "$solver" for solver in [:cholesky, :ldlt, :lu, :klu]
-        Φ = FP.LazyPTDF(network; solver, gpu=false)
+        Φ = APF.LazyPTDF(network; solver, gpu=false)
 
         # Check our power flows against PowerModels
-        FP.compute_flow!(f, p, Φ)
+        APF.compute_flow!(f, p, Φ)
         @test isapprox(f, fpm; atol=1e-6)
 
         # Check batched mode
-        FP.compute_flow!(f_batch, p_batch, Φ)
+        APF.compute_flow!(f_batch, p_batch, Φ)
         @test isapprox(f_batch, f_batch_pm; atol=1e-6)
     end
 

@@ -3,7 +3,7 @@ import LinearAlgebra.mul!
 import SparseArrays: sparse
 
 """
-    BranchIncidenceMatrix
+    BranchIncidenceMatrix{V}
 
 Efficient data structure for representing the branch indicence matrix of a power grid.
 
@@ -11,17 +11,35 @@ A[k, i] = +1 if branch k starts at bus i
         = -1 if branch k ends at bus j
         =  0 otherwise
 """
-struct BranchIncidenceMatrix
+struct BranchIncidenceMatrix{V}
     N::Int
     E::Int
 
-    bus_fr::Vector{Int}
-    bus_to::Vector{Int}
+    bus_fr::V
+    bus_to::V
 end
 
 Base.size(A::BranchIncidenceMatrix) = (A.E, A.N)
+function Base.size(A::BranchIncidenceMatrix, d::Integer)
+    s = size(A)
+    if d == 1 || d == 2
+        return s[d]
+    elseif d > 2
+        return 1
+    else
+        error("arraysize: dimension $d out of range")
+    end
+end
 
-function BranchIncidenceMatrix(network::Network)
+KA.get_backend(A::BranchIncidenceMatrix) = KA.get_backend(A.bus_fr)
+
+"""
+    branch_incidence_matrix([backend], network::Network)
+
+Build branch incidence matrix on the specified backend.
+Defaults to cpu if no backend is provided.
+"""
+function branch_incidence_matrix(::KA.CPU, network::Network)
     N = num_buses(network)
     E = num_branches(network)
 
@@ -31,7 +49,9 @@ function BranchIncidenceMatrix(network::Network)
     return BranchIncidenceMatrix(N, E, bus_fr, bus_to)
 end
 
-function SparseArrays.sparse(A::BranchIncidenceMatrix)
+branch_incidence_matrix(network::Network) = branch_incidence_matrix(KA.CPU(), network)
+
+function SparseArrays.sparse(::KA.CPU, A::BranchIncidenceMatrix)
     E, N = size(A)
     Is = zeros(Int, 2*E)
     Js = zeros(Int, 2*E)
@@ -50,26 +70,14 @@ function SparseArrays.sparse(A::BranchIncidenceMatrix)
     return SparseArrays.sparse(Is, Js, Vs, E, N)
 end
 
-"""
-    mul!(y, A::BranchIncidenceMatrix, x)
+SparseArrays.sparse(A::BranchIncidenceMatrix) = SparseArrays.sparse(KA.get_backend(A), A)
 
-Efficient implementation of Matrix-vector product with `A`.
-"""
-function LinearAlgebra.mul!(y::AbstractVector, A::BranchIncidenceMatrix, x::AbstractVector)
-    N, E = A.N, A.E
-    N == size(x, 1) || throw(DimensionMismatch("A has size $(size(A)), but x has size $(size(x))"))
-    E == size(y, 1) || throw(DimensionMismatch("A has size $(size(A)), but y has size $(size(y))"))
-    
-    @inbounds @simd for e in 1:E
-        i = A.bus_fr[e]
-        j = A.bus_to[e]
-        y[e] = x[i] - x[j]
-    end
-    return y
+function LinearAlgebra.mul!(y::AbstractVecOrMat, A::BranchIncidenceMatrix, x::AbstractVecOrMat)
+    return LinearAlgebra.mul!(get_backend(A), y, A, x)
 end
 
-function LinearAlgebra.mul!(y::AbstractMatrix, A::BranchIncidenceMatrix, x::AbstractMatrix)
-    N, E = A.N, A.E
+function LinearAlgebra.mul!(::KA.CPU, y::AbstractVecOrMat, A::BranchIncidenceMatrix, x::AbstractVecOrMat)
+    E, N = size(A)
     K = size(y, 2)
 
     N == size(x, 1) || throw(DimensionMismatch("A has size $(size(A)), but x has size $(size(x))"))

@@ -1,14 +1,18 @@
 function test_branch_incidence_matrix()
     data = PM.make_basic_network(pglib("pglib_opf_case14_ieee"))
+    network = APF.from_power_models(data)
     N = length(data["bus"])
     E = length(data["branch"])
 
-    A = FP.BranchIncidenceMatrix(data)
-    @test A.N == N
-    @test A.E == E
+    A = APF.branch_incidence_matrix(network)
+    @test size(A) == (E, N)
+    @test size(A, 1) == E
+    @test size(A, 2) == N
+    @test size(A, 3) == size(A, 4) == 1
+    @test_throws ErrorException size(A, 0)
 
     # Reference implementation
-    A_pm = calc_basic_incidence_matrix(data)
+    A_pm = PM.calc_basic_incidence_matrix(data)
     x = rand(N)
     y_pm = A_pm * x
     y = zeros(E)
