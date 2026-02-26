@@ -1,5 +1,20 @@
+#=
+    Mathematical notes:
+    The branch susceptance matrix is M = B × Ab, where
+        B = Diag(b) and Ab is the branch incidence matrix.
+    
+    Therefore, M and Ab have the same sparsity structure (2E non-zeros coeffs)
+        and differ only in the absolute value of the numerical coeffs
+        (+1 and -1 for Ab, +bₑ and -bₑ for M).
+
+    As a consequence, much of the code is repeated boilerplate,
+        and could (conceptually) be merged by representing Ab as a
+        branch susceptance matrix where all branches have unit susceptance.
+        This is left for future work 
+=#
+
 """
-    BranchSusceptanceMatrix{V}
+    BranchSusceptanceMatrix{Vi,Vf}
 
 Efficient data structure for representing the branch susceptance matrix of a power grid.
 
@@ -11,6 +26,8 @@ struct BranchSusceptanceMatrix{Vi,Vf}
     N::Int
     E::Int
 
+    # Vi is a <:AbstractVector{<:Integer}
+    # Vf is a <:AbstractVector{<:Real}
     bus_fr::Vi
     bus_to::Vi
     br_b::Vf
@@ -50,6 +67,12 @@ end
 branch_susceptance_matrix(network::Network) = branch_susceptance_matrix(DefaultBackend(), network)
 
 function SparseArrays.sparse(A::BranchSusceptanceMatrix)
+    # Sanity check: make sure we are on GPU
+    backend = KA.get_backend(A)
+    if !isa(A, KA.CPU)
+        error("Unsupported backend for building a sparse branch susceptance matrix: $(typeof(backend))")
+    end
+
     E, N = size(A)
     Is = zeros(Int, 2*E)
     Js = zeros(Int, 2*E)
