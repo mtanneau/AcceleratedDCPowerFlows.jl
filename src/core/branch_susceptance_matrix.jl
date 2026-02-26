@@ -1,0 +1,110 @@
+#=
+    Mathematical notes:
+    The branch susceptance matrix is M = B × Ab, where
+        B = Diag(b) and Ab is the branch incidence matrix.
+    
+    Therefore, M and Ab have the same sparsity structure (2E non-zeros coeffs)
+        and differ only in the absolute value of the numerical coeffs
+        (+1 and -1 for Ab, +bₑ and -bₑ for M).
+
+    As a consequence, much of the code is repeated boilerplate,
+        and could (conceptually) be merged by representing Ab as a
+        branch susceptance matrix where all branches have unit susceptance.
+        This is left for future work 
+=#
+
+"""
+    BranchSusceptanceMatrix{Vi,Vf}
+
+Efficient data structure for representing the branch susceptance matrix of a power grid.
+
+A[k, i] = +bₖ if branch k starts at bus i
+        = -bₖ if branch k ends at bus j
+        =  0 otherwise
+"""
+struct BranchSusceptanceMatrix{Vi,Vf}
+    N::Int
+    E::Int
+
+    # Vi is a <:AbstractVector{<:Integer}
+    # Vf is a <:AbstractVector{<:Real}
+    bus_fr::Vi
+    bus_to::Vi
+    br_b::Vf
+end
+
+Base.size(A::BranchSusceptanceMatrix) = (A.E, A.N)
+function Base.size(A::BranchSusceptanceMatrix, d::Integer)
+    s = size(A)
+    if d == 1 || d == 2
+        return s[d]
+    elseif d > 2
+        return 1
+    else
+        error("arraysize: dimension $d out of range")
+    end
+end
+
+KA.get_backend(A::BranchSusceptanceMatrix) = KA.get_backend(A.bus_fr)
+
+"""
+    branch_susceptance_matrix([backend], network::Network)
+
+Build branch susceptance matrix on the specified backend.
+Defaults to cpu if no backend is provided.
+"""
+function branch_susceptance_matrix(::KA.CPU, network::Network)
+    N = num_buses(network)
+    E = num_branches(network)
+
+    bus_fr = [br.bus_fr for br in network.branches]
+    bus_to = [br.bus_to for br in network.branches]
+    br_b = [br.b for br in network.branches]
+
+    return BranchSusceptanceMatrix(N, E, bus_fr, bus_to, br_b)
+end
+
+branch_susceptance_matrix(network::Network) = branch_susceptance_matrix(DefaultBackend(), network)
+
+function SparseArrays.sparse(A::BranchSusceptanceMatrix)
+    # Sanity check: make sure we are on CPU
+    backend = KA.get_backend(A)
+    if !isa(backend, KA.CPU)
+        error("Unsupported backend for building a sparse branch susceptance matrix: $(typeof(backend))")
+    end
+
+    E, N = size(A)
+    Is = zeros(Int, 2*E)
+    Js = zeros(Int, 2*E)
+    Vs = zeros(Float64, 2*E)
+
+    for e in 1:E
+        i = A.bus_fr[e]
+        j = A.bus_to[e]
+        Is[2*e-1] = e
+        Js[2*e-1] = i
+        Vs[2*e-1] = +A.br_b[e]
+        Is[2*e+0] = e
+        Js[2*e+0] = j
+        Vs[2*e+0] = -A.br_b[e]
+    end
+    return SparseArrays.sparse(Is, Js, Vs, E, N)
+end
+
+function LinearAlgebra.mul!(y::AbstractVecOrMat, A::BranchSusceptanceMatrix, x::AbstractVecOrMat)
+    E, N = size(A)
+    K = size(y, 2)
+
+    N == size(x, 1) || throw(DimensionMismatch("A has size $(size(A)), but x has size $(size(x))"))
+    E == size(y, 1) || throw(DimensionMismatch("A has size $(size(A)), but y has size $(size(y))"))
+    K == size(x, 2) || throw(DimensionMismatch("x has size $(size(x)), but y has size $(size(y))"))
+
+    @inbounds @simd for k in 1:K
+        for e in 1:E
+            i = A.bus_fr[e]
+            j = A.bus_to[e]
+            y[e,k] = A.br_b[e] * (x[i,k] - x[j,k])
+        end
+    end
+    return y
+end
