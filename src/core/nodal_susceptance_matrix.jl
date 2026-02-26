@@ -9,7 +9,7 @@
         Note that (Aₑ)ᵢ = +1 and (Aₑ)ⱼ = -1 where branch `e = (i, j)`.
     
     This strategy is simple, but not optimal when parallel branches are present.
-        (it is optimal if there are no parallel branches).
+        (it is optimal if there are no parallel branches)
 =#
 
 """
