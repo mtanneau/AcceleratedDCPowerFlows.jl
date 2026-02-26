@@ -16,6 +16,7 @@ import KernelAbstractions as KA
         include("core/branch_incidence_matrix.jl")
         include("core/branch_susceptance_matrix.jl")
         include("core/nodal_susceptance_matrix.jl")
+    end
 
     @testset "graph" begin
         include("graph/bridges.jl")
