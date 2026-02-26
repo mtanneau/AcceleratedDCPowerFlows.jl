@@ -69,7 +69,7 @@ branch_susceptance_matrix(network::Network) = branch_susceptance_matrix(DefaultB
 function SparseArrays.sparse(A::BranchSusceptanceMatrix)
     # Sanity check: make sure we are on GPU
     backend = KA.get_backend(A)
-    if !isa(A, KA.CPU)
+    if !isa(backend, KA.CPU)
         error("Unsupported backend for building a sparse branch susceptance matrix: $(typeof(backend))")
     end
 
