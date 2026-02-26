@@ -20,18 +20,12 @@ function full_ptdf(bkd::KA.CPU, network::Network; linear_solver=:auto)
     E = num_branches(network)
     islack = network.slack_bus_index
 
-    # Build nodal admittance matrix
-    # TODO: build it directly
+    # Build nodal susceptance matrix
+    # ⚠ susceptances are _negated_ so that AᵀBA is positive definite
     A = branch_incidence_matrix(bkd, network)
-    A_sparse = SparseArrays.sparse(A)  
-
-    # ⚠ we negate the susceptance here
-    #    so that AᵀBA is positive definite
     b = [-br.b for br in network.branches]
     bmin = minimum(b)
-    B = Diagonal(b)
-    BA = B * A_sparse
-    Y = A_sparse' * BA
+    Y = -sparse(nodal_susceptance_matrix(bkd, network))  # Negated!
     Y[islack, :] .= 0.0
     Y[:, islack] .= 0.0
     Y[islack, islack] = 1.0
