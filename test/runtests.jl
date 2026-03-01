@@ -29,6 +29,10 @@ import KernelAbstractions as KA
     @testset "LODF" begin
         include("lodf/lodf.jl")
     end
+
+    @testset "DCPF" begin
+        include("dcpf/dcpf.jl")
+    end
 end
 
 @testset "Extensions" begin
