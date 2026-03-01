@@ -119,6 +119,17 @@ function from_power_models(pmdata::Dict)
     return network
 end
 
+"""
+    net_injection(network::Network)
+
+Compute the net power injection vector for all buses.
+
+Returns `p` where `p[i] = -bus[i].pd` (generation minus load).
+"""
+function net_injection(network::Network)
+    return [-bus.pd for bus in network.buses]
+end
+
 include("branch_incidence_matrix.jl")
 include("branch_susceptance_matrix.jl")
 include("nodal_susceptance_matrix.jl")
