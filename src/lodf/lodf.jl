@@ -4,11 +4,12 @@ function lodf(network::Network;
     backend=DefaultBackend(),
     linear_solver=:auto,
     lodf_type=:lazy,
+    kwargs...,
 )
     if lodf_type == :full
         return full_lodf(backend, network; linear_solver)
     elseif lodf_type == :lazy
-        return lazy_lodf(backend, network; linear_solver)
+        return lazy_lodf(backend, network; linear_solver, kwargs...)
     else
         error("Unsupported LODF type: $(lodf_type). Only :full and :lazy are supported.")
     end
