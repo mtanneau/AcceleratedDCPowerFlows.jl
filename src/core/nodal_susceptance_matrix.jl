@@ -52,15 +52,24 @@ KA.get_backend(A::NodalSusceptanceMatrix) = KA.get_backend(A.bus_fr)
 Build branch susceptance matrix on the specified backend.
 Defaults to cpu if no backend is provided.
 """
-function nodal_susceptance_matrix(::KA.CPU, network::Network)
+function nodal_susceptance_matrix(backend::KA.Backend, network::Network)
     N = num_buses(network)
     E = num_branches(network)
 
-    bus_fr = [br.bus_fr for br in network.branches]
-    bus_to = [br.bus_to for br in network.branches]
-    br_b = [br.b for br in network.branches]
+    # Build on host (CPU)
+    bus_fr_host = [br.bus_fr for br in network.branches]
+    bus_to_host = [br.bus_to for br in network.branches]
+    br_b_host = [br.b for br in network.branches]
 
-    return NodalSusceptanceMatrix(N, E, bus_fr, bus_to, br_b)
+    # Transfer to device (typically GPU)
+    bus_fr_dev = KA.allocate(backend, eltype(bus_fr_host), (E,))
+    bus_to_dev = KA.allocate(backend, eltype(bus_to_host), (E,))
+    br_b_dev = KA.allocate(backend, eltype(br_b_host), (E,))
+    copyto!(bus_fr_dev, bus_fr_host)
+    copyto!(bus_to_dev, bus_to_host)
+    copyto!(br_b_dev, br_b_host)
+
+    return NodalSusceptanceMatrix(N, E, bus_fr_dev, bus_to_dev, br_b_dev)
 end
 
 nodal_susceptance_matrix(network::Network) = nodal_susceptance_matrix(default_backend(), network)
@@ -105,28 +114,64 @@ function SparseArrays.sparse(A::NodalSusceptanceMatrix)
     return SparseArrays.sparse(Is, Js, Vs, N, N)
 end
 
+#=
+    To compute the matrix-vector product, we use the relation
+    * Compute `zₑ = bₑ * Aₑx = bₑ×(xᵢ - xⱼ) ∈ R`
+    * yᵢ += zₑ
+    * yⱼ -= zₑ
+
+    Because we update entries of `yᵢ` multiple times 
+        (as many times as the degree Δᵢ), this implementation
+        cannot be @simd-ed (but it can be parallelized along 
+        the second dimension of `y`)
+=#
+
 function LinearAlgebra.mul!(y::AbstractVecOrMat, A::NodalSusceptanceMatrix, x::AbstractVecOrMat)
     N = A.N
-    E = A.E
     K = size(y, 2)
 
     N == size(x, 1) || throw(DimensionMismatch("A has size $(size(A)), but x has size $(size(x))"))
     N == size(y, 1) || throw(DimensionMismatch("A has size $(size(A)), but y has size $(size(y))"))
     K == size(x, 2) || throw(DimensionMismatch("x has size $(size(x)), but y has size $(size(y))"))
 
-    y .= zero(eltype(y))
+    backend = KA.get_backend(A)
+    if !(backend == KA.get_backend(x) == KA.get_backend(y))
+        error("A, x, and y have different backends.")
+    end
 
-    #=
-        To compute the matrix-vector product, we use the relation
-        * Compute `zₑ = bₑ * Aₑx = bₑ×(xᵢ - xⱼ) ∈ R`
-        * yᵢ += zₑ
-        * yⱼ -= zₑ
+    _unsafe_mul!(backend, y, A, x)
 
-        Because we update entries of `yᵢ` multiple times 
-            (as many times as the degree Δᵢ), this implementation
-            cannot be @simd-ed (but it can be parallelized along 
-            the second dimension of `y`)
-    =#
+    return y
+end
+
+# Fallback implementation using KA
+function _unsafe_mul!(backend::KA.Backend, y::AbstractVecOrMat, A::NodalSusceptanceMatrix, x::AbstractVecOrMat)
+    backend === KA.get_backend(A) || error("backend ≠ KA.get_backend(A)")
+    K = size(y, 2)
+
+    @kernel function mul_kernel!(y, @Const(bus_fr), @Const(bus_to), @Const(br_b), @Const(x))
+        k, = @index(Global, NTuple)
+        @inbounds for e in 1:length(bus_fr)
+            i = bus_fr[e]
+            j = bus_to[e]
+            z = br_b[e] * (x[i, k] - x[j, k])
+            y[i, k] += z
+            y[j, k] -= z
+        end
+    end
+
+    kernel! = mul_kernel!(backend)
+    # `ndrange` is just `(K,)` because of the inner sum on `e`
+    kernel!(y, A.bus_fr, A.bus_to, A.br_b, x, ndrange=(K,))
+    synchronize(backend)
+
+    return y
+end
+
+# Specialized implementation on CPU, single threaded.
+function _unsafe_mul!(::KA.CPU, y::AbstractVecOrMat, A::NodalSusceptanceMatrix, x::AbstractVecOrMat)
+    E = A.E
+    K = size(y, 2)
 
     @inbounds for k in 1:K
         for e in 1:E
