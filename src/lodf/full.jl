@@ -6,7 +6,12 @@ end
 
 KA.get_backend(L::FullLODF) = KA.get_backend(L.matrix)
 
-function full_lodf(bkd::KA.CPU, network::Network; kwargs...)
+full_lodf(network; kwargs...) = full_lodf(default_backend(), network; kwargs...)
+
+function full_lodf(bkd::KA.CPU, network::Network; 
+    linear_solver=:auto,
+    kwargs...,
+)
     # TODO: how should we handle bridges?
 
     N = num_buses(network)
@@ -14,7 +19,7 @@ function full_lodf(bkd::KA.CPU, network::Network; kwargs...)
     i0 = network.slack_bus_index
 
     # Build a lazy PTDF to get factorization of nodal admittance matrix
-    Φ = lazy_ptdf(bkd, network; linear_solver=:auto)
+    Φ = lazy_ptdf(bkd, network; linear_solver=linear_solver, kwargs...)
 
     A = sparse(branch_incidence_matrix(bkd, network))
     b = [-br.b for br in network.branches]

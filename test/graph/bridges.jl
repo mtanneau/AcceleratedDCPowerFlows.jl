@@ -1,5 +1,5 @@
 function test_bridges()
-    data = PM.make_basic_network(pglib("14_ieee"))
+    data = PM.make_basic_network(pglib("pglib_opf_case14_ieee"))
     network = APF.from_power_models(data)
 
     b = APF.find_bridges(network)

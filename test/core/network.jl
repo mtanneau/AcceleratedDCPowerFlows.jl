@@ -1,5 +1,5 @@
 function test_network_conversion_from_power_models()
-    pm = pglib("118_ieee")
+    pm = pglib("pglib_opf_case118_ieee")
 
     # Check
     network = APF.from_power_models(pm)

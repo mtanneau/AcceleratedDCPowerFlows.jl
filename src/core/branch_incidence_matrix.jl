@@ -49,7 +49,7 @@ function branch_incidence_matrix(::KA.CPU, network::Network)
     return BranchIncidenceMatrix(N, E, bus_fr, bus_to)
 end
 
-branch_incidence_matrix(network::Network) = branch_incidence_matrix(DefaultBackend(), network)
+branch_incidence_matrix(network::Network) = branch_incidence_matrix(default_backend(), network)
 
 function SparseArrays.sparse(A::BranchIncidenceMatrix)
     # Sanity check: make sure we are on CPU

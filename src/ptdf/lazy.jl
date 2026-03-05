@@ -23,6 +23,8 @@ end
 
 KA.get_backend(M::LazyPTDF) = KA.get_backend(M.A)
 
+lazy_ptdf(network::Network; kwargs...) = lazy_ptdf(default_backend(), network; kwargs...)
+
 function lazy_ptdf(bkd::KA.CPU, network::Network; linear_solver=:auto)
     N = num_buses(network)
     E = num_branches(network)

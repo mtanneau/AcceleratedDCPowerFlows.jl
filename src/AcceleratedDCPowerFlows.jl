@@ -25,7 +25,12 @@ export dcpf, full_dcpf, lazy_dcpf
 export compute_flow!, solve!
 
 # Some global definitions
-DefaultBackend() = KA.CPU()
+"""
+    default_backend()
+
+Default backend, currently equivalent to `KernelAbstractions.CPU()`.
+"""
+default_backend() = KA.CPU()
 
 include("core/network.jl")
 include("graph/bridges.jl")

@@ -12,6 +12,8 @@ end
 
 KA.get_backend(L::LazyLODF) = KA.get_backend(L.Φ)
 
+lazy_lodf(network; kwargs...) = lazy_lodf(default_backend(), network; kwargs...)
+
 function lazy_lodf(bkd::KA.CPU, network::Network; ptdf_type=:lazy, kwargs...)
     if ptdf_type == :lazy
         Φ = lazy_ptdf(bkd, network; kwargs...)

@@ -15,6 +15,8 @@ end
 
 KA.get_backend(M::FullPTDF) = KA.get_backend(M.Yinv)
 
+full_ptdf(network::Network; kwargs...) = full_ptdf(default_backend(), network; kwargs...)
+
 function full_ptdf(bkd::KA.CPU, network::Network; linear_solver=:auto)
     N = num_buses(network)
     E = num_branches(network)
