@@ -30,6 +30,27 @@ function _test_dcpf(data_pm; dcpf_type)
     return nothing
 end
 
+function test_dcpf_entry_points()
+    data = PM.make_basic_network(pglib("pglib_opf_case14_ieee"))
+    network = APF.from_power_models(data)
+
+    D = APF.dcpf(network; dcpf_type=:full)
+    @test isa(D, APF.FullInverseSusceptance)
+    @test KA.get_backend(D) == APF.default_backend()
+
+    D = APF.dcpf(network; dcpf_type=:lazy)
+    @test isa(D, APF.LazyInverseSusceptance)
+    @test KA.get_backend(D) == APF.default_backend()
+
+    @test_throws ErrorException APF.dcpf(network; dcpf_type=:other)
+
+    @test_throws MethodError APF.full_dcpf(network; dcpf_type=:lazy)
+    @test_throws MethodError APF.lazy_dcpf(network; dcpf_type=:full)
+
+    @inferred APF.FullInverseSusceptance APF.full_dcpf(network)
+    @inferred APF.LazyInverseSusceptance APF.lazy_dcpf(network)
+end
+
 @testset "DCPF" begin
     data = PM.make_basic_network(pglib("pglib_opf_case14_ieee"))
 
@@ -50,4 +71,6 @@ end
             _test_dcpf(data; dcpf_type=:lazy)
         end
     end
+
+    @testset test_dcpf_entry_points()
 end
