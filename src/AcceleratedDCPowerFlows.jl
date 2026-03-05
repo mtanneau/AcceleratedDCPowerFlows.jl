@@ -24,7 +24,12 @@ export lodf, full_lodf, lazy_lodf
 export compute_flow!
 
 # Some global definitions
-DefaultBackend() = KA.CPU()
+"""
+    default_backend()
+
+Default backend, currently equivalent to `KernelAbstractions.CPU()`.
+"""
+default_backend() = KA.CPU()
 
 include("core/network.jl")
 include("graph/bridges.jl")

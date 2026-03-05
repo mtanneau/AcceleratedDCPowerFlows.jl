@@ -63,7 +63,7 @@ function nodal_susceptance_matrix(::KA.CPU, network::Network)
     return NodalSusceptanceMatrix(N, E, bus_fr, bus_to, br_b)
 end
 
-nodal_susceptance_matrix(network::Network) = nodal_susceptance_matrix(DefaultBackend(), network)
+nodal_susceptance_matrix(network::Network) = nodal_susceptance_matrix(default_backend(), network)
 
 function SparseArrays.sparse(A::NodalSusceptanceMatrix)
     # Sanity check: make sure we are on CPU

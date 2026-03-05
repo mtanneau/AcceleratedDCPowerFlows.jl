@@ -1,7 +1,7 @@
 abstract type AbstractLODF end
 
 function lodf(network::Network;
-    backend=DefaultBackend(),
+    backend=default_backend(),
     linear_solver=:auto,
     lodf_type=:lazy,
 )

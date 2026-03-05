@@ -64,7 +64,7 @@ function branch_susceptance_matrix(::KA.CPU, network::Network)
     return BranchSusceptanceMatrix(N, E, bus_fr, bus_to, br_b)
 end
 
-branch_susceptance_matrix(network::Network) = branch_susceptance_matrix(DefaultBackend(), network)
+branch_susceptance_matrix(network::Network) = branch_susceptance_matrix(default_backend(), network)
 
 function SparseArrays.sparse(A::BranchSusceptanceMatrix)
     # Sanity check: make sure we are on CPU

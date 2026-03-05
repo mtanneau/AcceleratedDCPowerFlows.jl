@@ -6,7 +6,7 @@ end
 
 KA.get_backend(L::FullLODF) = KA.get_backend(L.matrix)
 
-full_lodf(network; kwargs...) = full_lodf(DefaultBackend(), network; kwargs...)
+full_lodf(network; kwargs...) = full_lodf(default_backend(), network; kwargs...)
 
 function full_lodf(bkd::KA.CPU, network::Network; kwargs...)
     # TODO: how should we handle bridges?
