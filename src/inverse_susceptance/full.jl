@@ -36,3 +36,9 @@ function solve!(θ, p, S::FullInverseSusceptance)
     θ[S.islack, :] .= 0
     return θ
 end
+
+function Base.getindex(S::FullInverseSusceptance, ::Colon, i::Int)
+    col = -S.Yinv[:, i]
+    col[S.islack] = 0.0
+    return col
+end

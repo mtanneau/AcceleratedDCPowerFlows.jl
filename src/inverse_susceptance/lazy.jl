@@ -31,3 +31,12 @@ function solve!(θ, p, S::LazyInverseSusceptance)
     θ[S.islack, :] .= 0
     return θ
 end
+
+function Base.getindex(S::LazyInverseSusceptance, ::Colon, i::Int)
+    N = S.Bf.N
+    eᵢ = zeros(N)
+    eᵢ[i] = 1.0
+    col = -(S.F \ eᵢ)
+    col[S.islack] = 0.0
+    return col
+end

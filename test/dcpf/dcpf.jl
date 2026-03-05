@@ -26,6 +26,28 @@ function _test_dcpf(data_pm; dcpf_type)
         fpm_b = Φ_pm * pb
         APF.compute_flow!(fb, pb, D)
         @test isapprox(fb, fpm_b; atol=1e-6)
+
+        # Test \ operator matches solve!
+        θ_bs = D \ p
+        θ_ref = zeros(N)
+        APF.solve!(θ_ref, p, D)
+        @test isapprox(θ_bs, θ_ref; atol=1e-12)
+        @test θ_bs[islack] ≈ 0.0 atol=1e-12
+
+        # Test batched \ operator
+        θ_bs_b = D \ pb
+        θ_ref_b = zeros(N, K)
+        APF.solve!(θ_ref_b, pb, D)
+        @test isapprox(θ_bs_b, θ_ref_b; atol=1e-12)
+
+        # Test getindex — column access S[:, i]
+        for i in [1, islack, N]
+            col = D[:, i]
+            eᵢ = zeros(N)
+            eᵢ[i] = 1.0
+            @test isapprox(col, D \ eᵢ; atol=1e-10)
+            @test col[islack] ≈ 0.0 atol=1e-12
+        end
     end
     return nothing
 end

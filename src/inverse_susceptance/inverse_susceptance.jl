@@ -65,6 +65,12 @@ function compute_flow!(pf, p, S::AbstractInverseSusceptance, θ)
     return pf
 end
 
+function Base.:\(S::AbstractInverseSusceptance, p::AbstractVecOrMat)
+    θ = similar(p)
+    solve!(θ, p, S)
+    return θ
+end
+
 # --- DCPF entry points ---
 
 """
