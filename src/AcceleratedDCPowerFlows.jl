@@ -10,7 +10,8 @@ using SuiteSparse
 using Graphs
 
 import KernelAbstractions as KA
-using KernelAbstractions: get_backend
+using KernelAbstractions: @kernel, @Const, @index, get_backend, synchronize
+
 
 using KLU
 
