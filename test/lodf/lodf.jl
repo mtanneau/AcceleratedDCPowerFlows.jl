@@ -8,11 +8,17 @@ function test_lodf_entry_points()
 
     M = APF.lodf(network; lodf_type=:full)
     @test isa(M, APF.FullLODF)
+    @test KA.get_backend(M) == APF.default_backend()
 
     M = APF.lodf(network; lodf_type=:lazy)
     @test isa(M, APF.LazyLODF)
+    @test KA.get_backend(M) == APF.default_backend()
 
     @test_throws ErrorException APF.lodf(network; lodf_type=:other)
+
+    # Additional type inference tests
+    @inferred APF.FullLODF APF.full_lodf(network)
+    @inferred APF.LazyLODF APF.lazy_lodf(network)
 end
 
 @testset "LODF" begin
