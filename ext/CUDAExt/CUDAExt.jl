@@ -33,7 +33,7 @@ function _mul_kernel!(y, bus_fr, bus_to, x)
     return nothing
 end
 
-function LinearAlgebra.mul!(y, A::APF.BranchIncidenceMatrix{V}, x) where V<:CuArray
+function LinearAlgebra.mul!(y::CUDA.CuVecOrMat, A::APF.BranchIncidenceMatrix{V}, x::CUDA.CuVecOrMat) where V<:CuArray
     E, N = size(A)
     K = size(y, 2)
     size(y, 1) == E || throw(DimensionMismatch("A has size $(size(A)) but y has size $(size(y))"))
