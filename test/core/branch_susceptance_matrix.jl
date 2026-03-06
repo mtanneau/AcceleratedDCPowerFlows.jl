@@ -34,7 +34,7 @@ function test_branch_susceptance_matrix()
     LinearAlgebra.mul!(y, A, x)
     @test y ≈ y_pm
     # Trigger backend-agnostic KA kernels
-    y = rand(N, 2)
+    y = rand(E, 2)
     invoke(APF._unsafe_mul!, Tuple{KA.Backend,AbstractVecOrMat,APF.BranchSusceptanceMatrix,AbstractVecOrMat}, backend, y, A, x)
     @test y ≈ y_pm
 
