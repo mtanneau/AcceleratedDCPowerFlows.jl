@@ -149,6 +149,8 @@ function _unsafe_mul!(backend::KA.Backend, y::AbstractVecOrMat, A::NodalSuscepta
     backend === KA.get_backend(A) || error("backend ≠ KA.get_backend(A)")
     K = size(y, 2)
 
+    y .= 0
+
     @kernel function mul_kernel!(y, @Const(bus_fr), @Const(bus_to), @Const(br_b), @Const(x))
         k, = @index(Global, NTuple)
         @inbounds for e in 1:length(bus_fr)
@@ -172,6 +174,8 @@ end
 function _unsafe_mul!(::KA.CPU, y::AbstractVecOrMat, A::NodalSusceptanceMatrix, x::AbstractVecOrMat)
     E = A.E
     K = size(y, 2)
+
+    y .= 0
 
     @inbounds for k in 1:K
         for e in 1:E
