@@ -18,6 +18,7 @@ function test_nodal_susceptance_matrix()
     @test sparse(A) ≈ A_pm
 
     # Check matvec and matmat products
+    # These will dispatch to a CPU-specific implementation
     x = rand(N)
     y_pm = A_pm * x
     y = zeros(N)
@@ -33,4 +34,37 @@ function test_nodal_susceptance_matrix()
     return nothing
 end
 
+# This test is designed to trigger the generic KA kernels
+# by using a dummy backend for which no specialized code exists
+function test_nodal_susceptance_matrix_kernel()
+    data = PM.make_basic_network(pglib("pglib_opf_case14_ieee"))
+    network = APF.from_power_models(data)
+    N = length(data["bus"])
+    E = length(data["branch"])
+
+    A_dev = APF.nodal_susceptance_matrix(MyBackend(), network)
+    @test KA.get_backend(A_dev) == MyBackend()
+
+    # Reference implementation
+    A_pm = PM.calc_basic_susceptance_matrix(data)
+
+    # Check matvec and matmat products
+    x = rand(N)
+    y_pm = A_pm * x
+    x_dev = MyArray(copy(x))
+    y_dev = MyArray(zeros(N))
+    LinearAlgebra.mul!(y_dev, A_dev, x_dev)
+    @test y_dev ≈ y_pm
+
+    x = rand(N, 3)
+    y_pm = A_pm * x
+    x_dev = MyArray(copy(x))
+    y_dev = MyArray(zeros(N, 3))
+    LinearAlgebra.mul!(y_dev, A_dev, x_dev)
+    @test y_dev ≈ y_pm
+
+    return nothing
+end
+
 @testset test_nodal_susceptance_matrix()
+@testset test_nodal_susceptance_matrix_kernel()

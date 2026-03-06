@@ -10,6 +10,8 @@ using PGLib
 import AcceleratedDCPowerFlows as APF
 import KernelAbstractions as KA
 
+include("kernel_utils.jl")
+
 @testset "AcceleratedDCPowerFlows" begin
     @testset "core" begin
         include("core/network.jl")
