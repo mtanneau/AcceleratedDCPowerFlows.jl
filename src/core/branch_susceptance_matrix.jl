@@ -75,7 +75,13 @@ end
 
 branch_susceptance_matrix(network::Network) = branch_susceptance_matrix(default_backend(), network)
 
-function SparseArrays.sparse(A::BranchSusceptanceMatrix)
+SparseArrays.sparse(A::BranchSusceptanceMatrix) = _sparse(KA.get_backend(A), A)
+
+function _sparse(backend::KA.Backend, ::BranchSusceptanceMatrix)
+    error("Sparse conversion of branch susceptance matrix is not supported on backend $(backend)")
+end
+
+function _sparse(::KA.CPU, A::BranchSusceptanceMatrix)
     # Sanity check: make sure we are on CPU
     backend = KA.get_backend(A)
     if !isa(backend, KA.CPU)

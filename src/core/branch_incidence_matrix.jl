@@ -58,13 +58,13 @@ end
 
 branch_incidence_matrix(network::Network) = branch_incidence_matrix(default_backend(), network)
 
-function SparseArrays.sparse(A::BranchIncidenceMatrix)
-    # Sanity check: make sure we are on CPU
-    backend = KA.get_backend(A)
-    if !isa(backend, KA.CPU)
-        error("Unsupported backend for building a sparse branch susceptance matrix: $(typeof(backend))")
-    end
+SparseArrays.sparse(A::BranchIncidenceMatrix) = _sparse(KA.get_backend(A), A)
 
+function _sparse(backend::KA.Backend, ::BranchIncidenceMatrix)
+    error("Sparse conversion of branch incidence matrix is not supported on backend $(backend)")
+end
+
+function _sparse(::KA.CPU, A::BranchIncidenceMatrix)
     Ti = eltype(A.bus_fr)
     E, N = size(A)
     Is = zeros(Ti, 2*E)

@@ -74,7 +74,13 @@ end
 
 nodal_susceptance_matrix(network::Network) = nodal_susceptance_matrix(default_backend(), network)
 
-function SparseArrays.sparse(A::NodalSusceptanceMatrix)
+SparseArrays.sparse(A::NodalSusceptanceMatrix) = _sparse(KA.get_backend(A), A)
+
+function _sparse(backend::KA.Backend, ::NodalSusceptanceMatrix)
+    error("Sparse conversion of nodal susceptance matrix is not supported on backend $(backend)")
+end
+
+function _sparse(::KA.CPU, A::NodalSusceptanceMatrix)
     # Sanity check: make sure we are on CPU
     backend = KA.get_backend(A)
     if !isa(backend, KA.CPU)
