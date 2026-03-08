@@ -10,7 +10,7 @@ function test_full_ptdf()
     fpm = Φ_pm * p
 
     # Test CUDA implementation
-    Φ_gpu = APF.full_ptdf(CUDA.CUDABackend(), network; linear_solver=:CUDSS)
+    Φ_gpu = APF.ptdf(CUDA.CUDABackend(), network; ptdf_type=:full, linear_solver=:CUDSS)
     @test isa(Φ_gpu, APF.FullPTDF)
     @test KA.get_backend(Φ_gpu) isa CUDA.CUDABackend
 
@@ -43,7 +43,7 @@ function test_full_ptdf_auto_solver()
     data = PM.make_basic_network(pglib("pglib_opf_case14_ieee"))
     network = APF.from_power_models(data)
     
-    Φ_gpu = APF.full_ptdf(CUDA.CUDABackend(), network; linear_solver=:auto)
+    Φ_gpu = APF.ptdf(CUDA.CUDABackend(), network; ptdf_type=:full, linear_solver=:auto)
     @test isa(Φ_gpu, APF.FullPTDF)
     @test KA.get_backend(Φ_gpu) isa CUDA.CUDABackend
 
