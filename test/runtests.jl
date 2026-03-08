@@ -30,8 +30,8 @@ import KernelAbstractions as KA
         include("lodf/lodf.jl")
     end
 
-    @testset "DCPF" begin
-        include("dcpf/dcpf.jl")
+    @testset "InverseSusceptance" begin
+        include("inverse_susceptance/inverse_susceptance.jl")
     end
 end
 

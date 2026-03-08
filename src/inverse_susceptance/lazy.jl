@@ -3,29 +3,26 @@
 
 Sparse factorization of the negated nodal susceptance matrix.
 
-Stores a factorization of `-Bn` and solves linear systems on demand,
-plus the branch susceptance matrix for computing flows.
+Stores a factorization of `-Bn` and solves linear systems on demand.
 """
-struct LazyInverseSusceptance{TF, TBf} <: AbstractInverseSusceptance
+struct LazyInverseSusceptance{TF} <: AbstractInverseSusceptance
     islack::Int
     F::TF    # Factorization of -Bn
-    Bf::TBf  # BranchSusceptanceMatrix
 end
 
-KA.get_backend(S::LazyInverseSusceptance) = KA.get_backend(S.Bf)
+KA.get_backend(::LazyInverseSusceptance) = KA.CPU()
 
-function lazy_inverse_susceptance(bkd::KA.CPU, network::Network; linear_solver=:auto)
-    F, _ = _factorize(bkd, network; linear_solver)
-    Bf = branch_susceptance_matrix(bkd, network)
-    return LazyInverseSusceptance(network.slack_bus_index, F, Bf)
+function lazy_inverse_susceptance(Y, islack, bmin; linear_solver=:auto)
+    F = _factorize(Y, bmin; linear_solver)
+    return LazyInverseSusceptance(islack, F)
 end
 
 """
-    solve!(θ, p, S::LazyInverseSusceptance)
+    compute_angles!(θ, p, S::LazyInverseSusceptance)
 
 Solve the DC power flow equation `Bθ = p` for voltage angles `θ`.
 """
-function solve!(θ, p, S::LazyInverseSusceptance)
+function compute_angles!(θ, p, S::LazyInverseSusceptance)
     θ .= S.F \ p
     θ .*= -1  # F is factorization of -Bn, so negate
     θ[S.islack, :] .= 0
@@ -33,8 +30,7 @@ function solve!(θ, p, S::LazyInverseSusceptance)
 end
 
 function Base.getindex(S::LazyInverseSusceptance, ::Colon, i::Int)
-    N = S.Bf.N
-    eᵢ = zeros(N)
+    eᵢ = zeros(size(S.F, 1))
     eᵢ[i] = 1.0
     col = -(S.F \ eᵢ)
     col[S.islack] = 0.0
