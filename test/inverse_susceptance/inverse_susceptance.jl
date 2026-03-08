@@ -9,10 +9,10 @@ function _test_inverse_susceptance(data_pm; type)
 
     @testset "$(linear_solver)" for linear_solver in [:auto, :SuiteSparse, :KLU]
         if type == :full
-            S = APF.full_inverse_susceptance(Y, islack, bmin; linear_solver)
+            S = APF.full_inverse_susceptance(KA.CPU(), Y, islack, bmin; linear_solver)
             @test isa(S, APF.FullInverseSusceptance)
         else
-            S = APF.lazy_inverse_susceptance(Y, islack, bmin; linear_solver)
+            S = APF.lazy_inverse_susceptance(KA.CPU(), Y, islack, bmin; linear_solver)
             @test isa(S, APF.LazyInverseSusceptance)
         end
 

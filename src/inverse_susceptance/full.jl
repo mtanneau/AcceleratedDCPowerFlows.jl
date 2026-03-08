@@ -1,9 +1,11 @@
 """
     FullInverseSusceptance
 
-Dense inverse of the negated nodal susceptance matrix.
+Dense inverse of the nodal susceptance matrix.
 
-Stores `(-Bn)⁻¹` as a dense matrix with the slack row zeroed.
+Stores `Bn⁻¹` as a dense matrix. The slack bus row and column are zeroed
+in the underlying nodal susceptance matrix (with the slack diagonal set to 1)
+before inversion, so the slack bus angle is always zero.
 """
 struct FullInverseSusceptance{D} <: AbstractInverseSusceptance
     islack::Int
@@ -12,7 +14,7 @@ end
 
 KA.get_backend(S::FullInverseSusceptance) = KA.get_backend(S.Yinv)
 
-function full_inverse_susceptance(Y, islack, bmin; linear_solver=:auto)
+function full_inverse_susceptance(backend::KA.CPU, Y, islack, bmin; linear_solver=:auto)
     F = _factorize(Y, bmin; linear_solver)
     N = size(Y, 1)
     Yinv = F \ Matrix(1.0I, N, N)
@@ -27,6 +29,8 @@ end
 Solve the DC power flow equation `Bθ = p` for voltage angles `θ`.
 """
 function compute_angles!(θ, p, S::FullInverseSusceptance)
+    backend = KA.get_backend(S)
+    isa(backend, KA.CPU) || error("Only CPU is supported at this point")
     mul!(θ, S.Yinv, p)
     θ .*= -1  # Yinv is (-Bn)⁻¹, so negate to get Bn⁻¹ * p
     θ[S.islack, :] .= 0
