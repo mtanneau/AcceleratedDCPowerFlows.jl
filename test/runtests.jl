@@ -29,6 +29,10 @@ import KernelAbstractions as KA
     @testset "LODF" begin
         include("lodf/lodf.jl")
     end
+
+    @testset "InverseSusceptance" begin
+        include("inverse_susceptance/inverse_susceptance.jl")
+    end
 end
 
 @testset "Extensions" begin
