@@ -21,8 +21,7 @@ export branch_susceptance_matrix
 export from_power_models
 export ptdf, full_ptdf, lazy_ptdf
 export lodf, full_lodf, lazy_lodf
-export dcpf, full_dcpf, lazy_dcpf
-export compute_flow!, solve!
+export compute_flow!
 
 # Some global definitions
 """
