@@ -15,7 +15,8 @@ end
 
 KA.get_backend(::LazyInverseSusceptance) = KA.CPU()
 
-function lazy_inverse_susceptance(backend::KA.CPU, Y, islack, bmin; linear_solver=:auto)
+function lazy_inverse_susceptance(backend::KA.CPU, network::Network; linear_solver=:auto)
+    Y, islack, bmin = _build_negated_nodal_susceptance(backend, network)
     F = _factorize(Y, bmin; linear_solver)
     return LazyInverseSusceptance(islack, F)
 end
