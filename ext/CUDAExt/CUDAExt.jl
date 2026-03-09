@@ -15,5 +15,6 @@ include("nodal_susceptance_matrix.jl")
 include("ptdf/full.jl")
 include("ptdf/lazy.jl")
 include("lodf/full.jl")
+include("lodf/lazy.jl")
 
 end  # module
