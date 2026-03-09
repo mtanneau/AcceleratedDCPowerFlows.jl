@@ -22,6 +22,8 @@ function find_bridges(network::Network)
     for (k, br) in enumerate(network.branches)
         i = br.bus_fr
         j = br.bus_to
+        # Make sure ordering is consistent
+        i, j = (i < j) ? (i, j) : (j, i)
         ks = get!(edge2branches, (i, j), Set{Int}())
         push!(ks, k)
 
@@ -34,6 +36,7 @@ function find_bridges(network::Network)
     is_bridge = zeros(Bool, E)
     for edge in bridges(G)
         i, j = (edge.src, edge.dst)
+        i, j = (i < j) ? (i, j) : (j, i)
         ks = edge2branches[(i, j)]
         for k in ks
             is_bridge[k] = (length(ks) == 1)
