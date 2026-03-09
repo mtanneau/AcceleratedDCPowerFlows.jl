@@ -12,6 +12,9 @@ function APF._sparse(::CUDA.CUDABackend, A::APF.NodalSusceptanceMatrix)
     end
 
     # For simplicity, we move to CPU, build a CSC on CPU, then back to GPU
+    # This could be improved (with no GPU -> CPU -> GPU movements) by either
+    #   * building a CuSparseMatrixCOO then converting to CSR,
+    #   * building the CSR matrix data directly
     A_host = APF.NodalSusceptanceMatrix(A.N, A.E, collect(A.bus_fr), collect(A.bus_to), collect(A.br_b))
     A_host_csc = sparse(A_host)
 
