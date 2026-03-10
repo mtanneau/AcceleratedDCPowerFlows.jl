@@ -34,6 +34,7 @@ default_backend() = KA.CPU()
 
 include("core/network.jl")
 include("graph/bridges.jl")
+include("inverse_susceptance/inverse_susceptance.jl")
 include("ptdf/ptdf.jl")
 include("lodf/lodf.jl")
 
