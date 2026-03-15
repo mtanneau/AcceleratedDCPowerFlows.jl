@@ -12,7 +12,9 @@ import KernelAbstractions as KA
 
 # Load test utilities
 include("utils/matrices.jl")
+include("utils/ptdf.jl")
 using .TestMatrixUtilities
+using .TestPTDFUtilities
 
 @testset "AcceleratedDCPowerFlows" begin
     @testset "core" begin

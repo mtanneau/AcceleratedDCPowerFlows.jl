@@ -18,6 +18,7 @@ using CUDSS
 
 # Load test utilities
 using ..TestMatrixUtilities
+using ..TestPTDFUtilities
 
 function runtests()
     for name in names(@__MODULE__; all = true)
