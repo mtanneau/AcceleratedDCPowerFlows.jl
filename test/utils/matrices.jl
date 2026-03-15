@@ -1,6 +1,20 @@
 # ============================================================================
 # Backend-agnostic test functions for matrix types
 # ============================================================================
+module TestMatrixUtilities
+
+using LinearAlgebra
+using SparseArrays
+using Test
+
+import AcceleratedDCPowerFlows as APF
+import KernelAbstractions as KA
+import PowerModels as PM
+
+export _test_branch_incidence_matrix
+export _test_branch_susceptance_matrix
+export _test_nodal_susceptance_matrix
+export _test_matrix_equivalence
 
 function _rand_array!(x)
     copyto!(x, randn(size(x)...))
@@ -144,4 +158,6 @@ function _test_matrix_equivalence(A, A_ref; test_generic_kernel=false)
     end
 
     return nothing
+end
+
 end

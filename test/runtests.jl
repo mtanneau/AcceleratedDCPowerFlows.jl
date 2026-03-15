@@ -10,6 +10,10 @@ using PGLib
 import AcceleratedDCPowerFlows as APF
 import KernelAbstractions as KA
 
+# Load test utilities
+include("utils/matrices.jl")
+using .TestMatrixUtilities
+
 @testset "AcceleratedDCPowerFlows" begin
     @testset "core" begin
         include("core/network.jl")
@@ -31,21 +35,19 @@ import KernelAbstractions as KA
     end
 end
 
-@testset "Extensions" begin
-    @testset "CUDAExt" begin
-        run_cuda_tests = try
-            using CUDA
-            CUDA.functional()
-        catch err
-            # Something went wrong, skip the tests
-            false
-        end
+@testset "CUDAExt" begin
+    run_cuda_tests = try
+        using CUDA
+        CUDA.functional()
+    catch err
+        # Something went wrong, skip the tests
+        false
+    end
 
-        if run_cuda_tests
-            include("ext/CUDAExt/CUDAExt.jl")
-        else
-            @info "CUDA not functional, skipping tests"
-            @test_skip true
-        end
+    if run_cuda_tests
+        include("ext/CUDAExt/CUDAExt.jl")
+    else
+        @info "CUDA not functional, skipping tests"
+        @test_skip true
     end
 end
