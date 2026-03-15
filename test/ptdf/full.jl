@@ -30,7 +30,7 @@ function _test_ptdf_full(data_pm)
         @test size(Φ.b) == (E,)
 
         @test KA.get_backend(Φ) == APF.default_backend()
-        _test_ptdf(Φ, Φ_pm)
+        _test_ptdf_matrix(Φ, Φ_pm)
     end
 
     return nothing

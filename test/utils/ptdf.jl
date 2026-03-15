@@ -8,17 +8,17 @@ using Test
 import AcceleratedDCPowerFlows as APF
 import KernelAbstractions as KA
 
-export _test_ptdf
+export _test_ptdf_matrix
 
 """
-    _test_ptdf(Φ, Φ_ref; atol=1e-6, batch_size=4)
+    _test_ptdf_matrix(Φ, Φ_ref; atol=1e-6, batch_size=4)
 
 Backend-agnostic test for the public `AbstractPTDF` API.
 
 This checks `compute_flow!` on vector and matrix inputs against a reference PTDF
 matrix computed independently.
 """
-function _test_ptdf(Φ::APF.AbstractPTDF, Φ_ref; atol=1e-6, batch_size=4)
+function _test_ptdf_matrix(Φ::APF.AbstractPTDF, Φ_ref; atol=1e-6, batch_size=4)
     backend = KA.get_backend(Φ)
 
     E, N = size(Φ_ref)

@@ -10,7 +10,7 @@ function test_full_ptdf()
     @test isa(Φ_gpu, APF.FullPTDF)
     @test KA.get_backend(Φ_gpu) isa CUDA.CUDABackend
 
-    _test_ptdf(Φ_gpu, Φ_pm)
+    _test_ptdf_matrix(Φ_gpu, Φ_pm)
 
     return nothing
 end
@@ -39,7 +39,7 @@ function test_lazy_ptdf()
     @test isa(Φ_gpu, APF.LazyPTDF)
     @test KA.get_backend(Φ_gpu) isa CUDA.CUDABackend
 
-    _test_ptdf(Φ_gpu, Φ_pm)
+    _test_ptdf_matrix(Φ_gpu, Φ_pm)
 
     return nothing
 end
