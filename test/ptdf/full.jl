@@ -16,26 +16,22 @@ function _test_ptdf_full(data_pm)
     network = APF.from_power_models(data_pm)
     N = APF.num_buses(network)
     E = APF.num_branches(network)
-    p = randn(N)
-    f = zeros(E)
 
     # Reference power flows, computed with PowerModels
     Φ_pm = PM.calc_basic_ptdf_matrix(data_pm)
-    fpm = Φ_pm * p  # power flows, computed with PowerModels
 
     @testset "$(linear_solver)" for linear_solver in [:auto, :SuiteSparse, :KLU]
-        # Form PTDF and compute power flows
         Φ = APF.ptdf(network; ptdf_type=:full, linear_solver=linear_solver)
-        APF.compute_flow!(f, p, Φ)  
-        @test isapprox(f, fpm; atol=1e-6)
+        @test isa(Φ, APF.FullPTDF)
+        @test Φ.E == E
+        @test Φ.N == N
 
-        # Check again with batched mode
-        K = 4
-        p = randn(N, K)
-        f = zeros(E, K)
-        fpm = Φ_pm * p
-        APF.compute_flow!(f, p, Φ)
-        @test isapprox(f, fpm; atol=1e-6)
+        @test size(Φ.A) == (E, N)
+        @test size(Φ.b) == (E,)
+
+        @test KA.get_backend(Φ) == APF.default_backend()
+        _test_ptdf_matrix(Φ, Φ_pm)
     end
+
     return nothing
 end
