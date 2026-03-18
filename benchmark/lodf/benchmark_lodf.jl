@@ -41,12 +41,7 @@ function build_lodf(
         )
     end
 
-    return APF.lodf(
-        network;
-        backend=backend,
-        lodf_type=lodf_type,
-        linear_solver=linear_solver,
-    )
+    return APF.lodf(network; backend=backend, lodf_type=lodf_type, linear_solver=linear_solver)
 end
 
 """
