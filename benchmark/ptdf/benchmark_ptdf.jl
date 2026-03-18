@@ -163,6 +163,12 @@ function benchmark_ptdf(network::APF.Network;
     for backend in backends
         bname = backend_name(backend)
 
+        # Check if CUDA is functional, skip if not
+        if isa(backend, CUDA.CUDABackend) && !CUDA.functional()
+            println("CUDA is not functional; skipping CUDA backend benchmarks.")
+            continue
+        end
+
         for ptdf_type in PTDF_TYPES
             # Skip full PTDF if size is too big
             if ptdf_type == :full
@@ -237,7 +243,8 @@ function run_benchmark(;
         fcsv_path = joinpath(export_path, case * ".csv")
         if isfile(fcsv_path) && !force
             # Load existing CSV and move to next case
-            df = CSV.load(fcsv_path, DataFrame)
+            println("Reading existing CSV result file for case $(case)")
+            df = CSV.read(fcsv_path, DataFrame)
             push!(D, df)
             continue
         end
