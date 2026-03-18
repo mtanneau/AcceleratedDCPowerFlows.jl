@@ -19,10 +19,7 @@ PM.silence()
 
 const DEFAULT_BACKENDS = [KA.CPU(), CUDA.CUDABackend()]
 const PTDF_TYPES = [:full, :lazy]
-const LINEAR_SOLVERS = Dict(
-    "cpu" => [:SuiteSparse, :KLU],
-    "cuda" => [:CUDSS],
-)
+const LINEAR_SOLVERS = Dict("cpu" => [:SuiteSparse, :KLU], "cuda" => [:CUDSS])
 const RHS_WIDTHS = [96]
 
 const PGLIB_BENCHMARK_CASES = [
@@ -54,13 +51,13 @@ configuration on `network`.
 Returns a `BenchmarkTools.Trial`.
 """
 function benchmark_ptdf_constructor(
-    backend::KA.Backend, 
-    network::APF.Network, 
+    backend::KA.Backend,
+    network::APF.Network,
     ptdf_type::Symbol,
     linear_solver::Symbol,
 )
     bres = @benchmark begin
-        APF.ptdf($backend, $network; ptdf_type=$(ptdf_type), linear_solver=$(linear_solver));
+        APF.ptdf($backend, $network; ptdf_type=($(ptdf_type)), linear_solver=($(linear_solver)));
         KA.synchronize($backend);
     end
 
@@ -98,45 +95,57 @@ Create an empty `DataFrame` with the benchmark CSV schema.
 Timing values are recorded in milliseconds and memory in kilobytes.
 """
 function new_results_table()
-    DataFrame(
-        timestamp = String[],
-        case_name = String[],
-        num_bus = Int[],
-        num_branch = Int[],
-        backend = String[],
-        device = String[],
-        blas_threads = Int[],
-        ptdf_type = String[],
-        linear_solver = String[],
-        operation = String[],
-        rhs_width = Int[],
-        min_time_ms = Float64[],
-        median_time_ms = Float64[],
-        mean_time_ms = Float64[],
-        std_time_ms = Float64[],
-        memory_kb = Float64[],
+    return DataFrame(;
+        timestamp=String[],
+        case_name=String[],
+        num_bus=Int[],
+        num_branch=Int[],
+        backend=String[],
+        device=String[],
+        blas_threads=Int[],
+        ptdf_type=String[],
+        linear_solver=String[],
+        operation=String[],
+        rhs_width=Int[],
+        min_time_ms=Float64[],
+        median_time_ms=Float64[],
+        mean_time_ms=Float64[],
+        std_time_ms=Float64[],
+        memory_kb=Float64[],
     )
 end
 
-function push_trial_row!(df::DataFrame, network::APF.Network, backend::KA.Backend, ptdf_type::Symbol, solver::Symbol, operation::String, rhs_width::Int, trial)
-    push!(df, (
-        string(Dates.now()),
-        APF.case_name(network),
-        APF.num_buses(network),
-        APF.num_branches(network),
-        backend_name(backend),
-        device_name(backend),
-        BLAS.get_num_threads(),
-        string(ptdf_type),
-        string(solver),
-        operation,
-        rhs_width,
-        Float64(minimum(trial.times)) / 1e6,
-        Float64(median(trial.times)) / 1e6,
-        Float64(mean(trial.times)) / 1e6,
-        Float64(std(trial.times)) / 1e6,
-        Float64(trial.memory) / 1024,
-    ))
+function push_trial_row!(
+    df::DataFrame,
+    network::APF.Network,
+    backend::KA.Backend,
+    ptdf_type::Symbol,
+    solver::Symbol,
+    operation::String,
+    rhs_width::Int,
+    trial,
+)
+    return push!(
+        df,
+        (
+            string(Dates.now()),
+            APF.case_name(network),
+            APF.num_buses(network),
+            APF.num_branches(network),
+            backend_name(backend),
+            device_name(backend),
+            BLAS.get_num_threads(),
+            string(ptdf_type),
+            string(solver),
+            operation,
+            rhs_width,
+            Float64(minimum(trial.times)) / 1e6,
+            Float64(median(trial.times)) / 1e6,
+            Float64(mean(trial.times)) / 1e6,
+            Float64(std(trial.times)) / 1e6,
+            Float64(trial.memory) / 1024,
+        ),
+    )
 end
 
 function _max_memory_estimate_gb()
@@ -149,12 +158,14 @@ end
 Run PTDF construction and `compute_flow!` benchmarks for all configured PTDF
 types and linear solvers on `network` and return the result table.
 """
-function benchmark_ptdf(network::APF.Network;
+function benchmark_ptdf(
+    network::APF.Network;
     backends=DEFAULT_BACKENDS,
     memory_limit_gb=_max_memory_estimate_gb(),
 )
-
-    println("Running case=$(APF.case_name(network)) N=$(APF.num_buses(network)) E=$(APF.num_branches(network))")
+    println(
+        "Running case=$(APF.case_name(network)) N=$(APF.num_buses(network)) E=$(APF.num_branches(network))",
+    )
 
     df = new_results_table()
 
@@ -175,18 +186,20 @@ function benchmark_ptdf(network::APF.Network;
                 N = APF.num_buses(network)
                 E = APF.num_branches(network)
                 _full_ptdf_mem_estimate_gb = N*N*sizeof(one(Float64)) / (1024^3)
-                _sys_ram_gb = round(Sys.total_memory() / (1024^3), digits=1)
+                _sys_ram_gb = round(Sys.total_memory() / (1024^3); digits=1)
                 if _full_ptdf_mem_estimate_gb > memory_limit_gb
                     if memory_warning_printed
                         println("Skipping full PTDF benchmark for case $(network.case_name).")
                     else
-                        println("""Skipping full PTDF benchmark for case $(network.case_name).
-                        An N×N matrix would require ~$(round(_full_ptdf_mem_estimate_gb, digits=1))GB of memory,
-                        which exceeds the current limit of $(memory_limit_gb)GB.
+                        println(
+                            """Skipping full PTDF benchmark for case $(network.case_name).
+                    An N×N matrix would require ~$(round(_full_ptdf_mem_estimate_gb, digits=1))GB of memory,
+                    which exceeds the current limit of $(memory_limit_gb)GB.
 
-                        To increase this tolerance, set `memory_limit_gb` to a higher threshold.
-                        FYI, your system has $(_sys_ram_gb)GB of RAM, and it's recommended to not exceed 50% of that threshold.
-                        """)
+                    To increase this tolerance, set `memory_limit_gb` to a higher threshold.
+                    FYI, your system has $(_sys_ram_gb)GB of RAM, and it's recommended to not exceed 50% of that threshold.
+                    """,
+                        )
                         memory_warning_printed = true
                     end
                     continue
@@ -196,19 +209,32 @@ function benchmark_ptdf(network::APF.Network;
             for solver in LINEAR_SOLVERS[bname]
                 println("  backend=$(bname) ptdf_type=$(ptdf_type) solver=$(solver)")
 
-                constructor_trial = benchmark_ptdf_constructor(
-                    backend, 
-                    network, 
-                    ptdf_type, 
+                constructor_trial = benchmark_ptdf_constructor(backend, network, ptdf_type, solver)
+                push_trial_row!(
+                    df,
+                    network,
+                    backend,
+                    ptdf_type,
                     solver,
+                    "construct",
+                    0,
+                    constructor_trial,
                 )
-                push_trial_row!(df, network, backend, ptdf_type, solver, "construct", 0, constructor_trial)
 
                 phi = APF.ptdf(backend, network; ptdf_type=ptdf_type, linear_solver=solver)
 
                 for k in RHS_WIDTHS
                     trial = benchmark_ptdf_matprod(phi, k)
-                    push_trial_row!(df, network, backend, ptdf_type, solver, "compute_flow", k, trial)
+                    push_trial_row!(
+                        df,
+                        network,
+                        backend,
+                        ptdf_type,
+                        solver,
+                        "compute_flow",
+                        k,
+                        trial,
+                    )
                 end
             end
         end
