@@ -4,9 +4,11 @@ This directory contains the PTDF benchmark driver for `AcceleratedDCPowerFlows.j
 
 ## Run
 
+To execute this benchmark, run
 ```bash
 julia --project=benchmark --threads <num_threads> benchmark/ptdf/benchmark_ptdf.jl
 ```
+where `<num_threads>` is the number of CPU threads.
 
 The script uses fixed constants near the top of the file for cases, backends,
 solvers, benchmark durations, and output path.
