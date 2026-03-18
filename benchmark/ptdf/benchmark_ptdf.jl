@@ -61,7 +61,7 @@ function benchmark_ptdf_constructor(
 )
     bres = @benchmark begin
         APF.ptdf($backend, $network; ptdf_type=$(ptdf_type), linear_solver=$(linear_solver));
-        KA.synchronize(backend);
+        KA.synchronize($backend);
     end
 
     return bres
