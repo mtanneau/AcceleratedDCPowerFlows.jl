@@ -7,7 +7,7 @@
     The implementation below uses the identity M = Σₑ bₑ × (AₑᵀAₑ)
         where Aₑ is the e-th row of `A`.
         Note that (Aₑ)ᵢ = +1 and (Aₑ)ⱼ = -1 where branch `e = (i, j)`.
-    
+
     This strategy is simple, but not optimal when parallel branches are present.
         (it is optimal if there are no parallel branches)
 =#
@@ -72,19 +72,25 @@ function nodal_susceptance_matrix(backend::KA.Backend, network::Network)
     return NodalSusceptanceMatrix(N, E, bus_fr_dev, bus_to_dev, br_b_dev)
 end
 
-nodal_susceptance_matrix(network::Network) = nodal_susceptance_matrix(default_backend(), network)
+function nodal_susceptance_matrix(network::Network)
+    return nodal_susceptance_matrix(default_backend(), network)
+end
 
 SparseArrays.sparse(A::NodalSusceptanceMatrix) = _sparse(KA.get_backend(A), A)
 
 function _sparse(backend::KA.Backend, ::NodalSusceptanceMatrix)
-    error("Sparse conversion of nodal susceptance matrix is not supported on backend $(backend)")
+    return error(
+        "Sparse conversion of nodal susceptance matrix is not supported on backend $(backend)",
+    )
 end
 
 function _sparse(::KA.CPU, A::NodalSusceptanceMatrix)
     # Sanity check: make sure we are on CPU
     backend = KA.get_backend(A)
     if !isa(backend, KA.CPU)
-        error("Unsupported backend for building a sparse nodal susceptance matrix: $(typeof(backend))")
+        error(
+            "Unsupported backend for building a sparse nodal susceptance matrix: $(typeof(backend))",
+        )
     end
 
     # Grab integer and float types
@@ -151,7 +157,12 @@ function LinearAlgebra.mul!(y::AbstractVecOrMat, A::NodalSusceptanceMatrix, x::A
 end
 
 # Fallback implementation using KA
-function _unsafe_mul!(backend::KA.Backend, y::AbstractVecOrMat, A::NodalSusceptanceMatrix, x::AbstractVecOrMat)
+function _unsafe_mul!(
+    backend::KA.Backend,
+    y::AbstractVecOrMat,
+    A::NodalSusceptanceMatrix,
+    x::AbstractVecOrMat,
+)
     backend === KA.get_backend(A) || error("backend ≠ KA.get_backend(A)")
     K = size(y, 2)
 
@@ -170,7 +181,7 @@ function _unsafe_mul!(backend::KA.Backend, y::AbstractVecOrMat, A::NodalSuscepta
 
     kernel! = mul_kernel!(backend)
     # `ndrange` is just `(K,)` because of the inner sum on `e`
-    kernel!(y, A.bus_fr, A.bus_to, A.br_b, x, ndrange=(K,))
+    kernel!(y, A.bus_fr, A.bus_to, A.br_b, x; ndrange=(K,))
     synchronize(backend)
 
     return y
@@ -187,7 +198,7 @@ function _unsafe_mul!(::KA.CPU, y::AbstractVecOrMat, A::NodalSusceptanceMatrix, 
         for e in 1:E
             i = A.bus_fr[e]
             j = A.bus_to[e]
-            z = A.br_b[e] * (x[i,k] - x[j,k])
+            z = A.br_b[e] * (x[i, k] - x[j, k])
             y[i, k] += z
             y[j, k] -= z
         end

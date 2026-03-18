@@ -12,7 +12,6 @@ using Graphs
 import KernelAbstractions as KA
 using KernelAbstractions: @kernel, @Const, @index, get_backend, synchronize
 
-
 using KLU
 
 export Network

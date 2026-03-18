@@ -63,7 +63,7 @@ function from_power_models(pmdata::Dict)
             iref_pm = i
         end
     end
-    sort!(buses, by=bus->bus.index)
+    sort!(buses; by=bus->bus.index)
     pmidx2bus = Dict(bus.index => bus for bus in buses)
     # Now, go through loads and generators to grab injections
     for pmload in values(pmdata["load"])
@@ -107,7 +107,7 @@ function from_power_models(pmdata::Dict)
         push!(branches, br)
     end
     # Sort branches by index
-    sort!(branches, by=br->br.index)
+    sort!(branches; by=br->br.index)
     pmidx2branch = Dict(br.index => br for br in branches)
     for (k, br) in enumerate(branches)
         br.index = k

@@ -2,7 +2,7 @@
     Mathematical notes:
     The branch susceptance matrix is M = B × Ab, where
         B = Diag(b) and Ab is the branch incidence matrix.
-    
+
     Therefore, M and Ab have the same sparsity structure (2E non-zeros coeffs)
         and differ only in the absolute value of the numerical coeffs
         (+1 and -1 for Ab, +bₑ and -bₑ for M).
@@ -73,19 +73,25 @@ function branch_susceptance_matrix(backend::KA.Backend, network::Network)
     return BranchSusceptanceMatrix(N, E, bus_fr_dev, bus_to_dev, br_b_dev)
 end
 
-branch_susceptance_matrix(network::Network) = branch_susceptance_matrix(default_backend(), network)
+function branch_susceptance_matrix(network::Network)
+    return branch_susceptance_matrix(default_backend(), network)
+end
 
 SparseArrays.sparse(A::BranchSusceptanceMatrix) = _sparse(KA.get_backend(A), A)
 
 function _sparse(backend::KA.Backend, ::BranchSusceptanceMatrix)
-    error("Sparse conversion of branch susceptance matrix is not supported on backend $(backend)")
+    return error(
+        "Sparse conversion of branch susceptance matrix is not supported on backend $(backend)",
+    )
 end
 
 function _sparse(::KA.CPU, A::BranchSusceptanceMatrix)
     # Sanity check: make sure we are on CPU
     backend = KA.get_backend(A)
     if !isa(backend, KA.CPU)
-        error("Unsupported backend for building a sparse branch susceptance matrix: $(typeof(backend))")
+        error(
+            "Unsupported backend for building a sparse branch susceptance matrix: $(typeof(backend))",
+        )
     end
 
     E, N = size(A)
@@ -125,7 +131,12 @@ function LinearAlgebra.mul!(y::AbstractVecOrMat, A::BranchSusceptanceMatrix, x::
 end
 
 # Fallback implementation using KA
-function _unsafe_mul!(backend::KA.Backend, y::AbstractVecOrMat, A::BranchSusceptanceMatrix, x::AbstractVecOrMat)
+function _unsafe_mul!(
+    backend::KA.Backend,
+    y::AbstractVecOrMat,
+    A::BranchSusceptanceMatrix,
+    x::AbstractVecOrMat,
+)
     backend === KA.get_backend(A) || error("backend ≠ KA.get_backend(A)")
     E = size(y, 1)
     K = size(y, 2)
@@ -141,14 +152,19 @@ function _unsafe_mul!(backend::KA.Backend, y::AbstractVecOrMat, A::BranchSuscept
     # `ndrange` will be (E, 1) if y is a Vector
     #                or (E, K) if y is a Matrix
     # This ensures that indexing is correct within the kernel 
-    kernel!(y, A.bus_fr, A.bus_to, A.br_b, x, ndrange=(E, K))
+    kernel!(y, A.bus_fr, A.bus_to, A.br_b, x; ndrange=(E, K))
     synchronize(backend)
 
     return y
 end
 
 # Specialized implementation on CPU, single threaded.
-function _unsafe_mul!(::KA.CPU, y::AbstractVecOrMat, A::BranchSusceptanceMatrix, x::AbstractVecOrMat)
+function _unsafe_mul!(
+    ::KA.CPU,
+    y::AbstractVecOrMat,
+    A::BranchSusceptanceMatrix,
+    x::AbstractVecOrMat,
+)
     E = size(y, 1)
     K = size(y, 2)
 
@@ -156,7 +172,7 @@ function _unsafe_mul!(::KA.CPU, y::AbstractVecOrMat, A::BranchSusceptanceMatrix,
         for e in 1:E
             i = A.bus_fr[e]
             j = A.bus_to[e]
-            y[e,k] = A.br_b[e] * (x[i,k] - x[j,k])
+            y[e, k] = A.br_b[e] * (x[i, k] - x[j, k])
         end
     end
     return y

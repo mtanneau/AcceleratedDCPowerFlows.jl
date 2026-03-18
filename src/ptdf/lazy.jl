@@ -15,15 +15,17 @@ struct LazyPTDF{TA,V,TF} <: AbstractPTDF
     b::V    # branch susceptances (negated)
 
     F::TF   # Factorization of Y. Must be able to solve linear systems with F \ p
-            # ⚠ We use a factorization of -(AᵀBA) to support cholesky factorization when possible
-            #    this is because branch susceptances are typically negative, hence AᵀBA is negative definite
+    # ⚠ We use a factorization of -(AᵀBA) to support cholesky factorization when possible
+    #    this is because branch susceptances are typically negative, hence AᵀBA is negative definite
 
     # TODO: cache
 end
 
 KA.get_backend(M::LazyPTDF) = KA.get_backend(M.A)
 
-lazy_ptdf(network::Network; kwargs...) = lazy_ptdf(default_backend(), network; kwargs...)
+function lazy_ptdf(network::Network; kwargs...)
+    return lazy_ptdf(default_backend(), network; kwargs...)
+end
 
 function lazy_ptdf(bkd::KA.CPU, network::Network; linear_solver=:auto)
     N = num_buses(network)
@@ -32,7 +34,7 @@ function lazy_ptdf(bkd::KA.CPU, network::Network; linear_solver=:auto)
 
     # Build nodal susceptance matrix
     # ⚠ susceptances are _negated_ so that AᵀBA is positive definite
-    A = branch_incidence_matrix(bkd, network) 
+    A = branch_incidence_matrix(bkd, network)
     b = [-br.b for br in network.branches]
     bmin = minimum(b)
     Y = -sparse(nodal_susceptance_matrix(bkd, network))

@@ -6,7 +6,7 @@ struct LazyLODF{SM,V,PTDF} <: AbstractLODF
     islack::Int
     A::SM
     b::V
-    
+
     Φ::PTDF
 end
 
@@ -27,16 +27,11 @@ function lazy_lodf(bkd::KA.CPU, network::Network; ptdf_type=:lazy, kwargs...)
 end
 
 function lazy_lodf(bkd::KA.CPU, network::Network, Φ::AbstractPTDF)
+    N = num_buses(network)
+    E = num_branches(network)
     A = branch_incidence_matrix(bkd, network)
     b = [-br.b for br in network.branches]
-    return LazyLODF(
-        num_buses(network), 
-        num_branches(network), 
-        network.slack_bus_index, 
-        A, 
-        b, 
-        Φ,
-    )
+    return LazyLODF(N, E, network.slack_bus_index, A, b, Φ)
 end
 
 # To compute post-contingency flows using a lazy LODF approach,
@@ -46,7 +41,7 @@ end
 #   is how this difference is computed, everything else is basically
 #   the same
 
-function compute_flow!(pfc, pf0::Vector, L::LazyLODF{SM,V,<:FullPTDF}, br::Branch) where{SM,V}
+function compute_flow!(pfc, pf0::Vector, L::LazyLODF{SM,V,<:FullPTDF}, br::Branch) where {SM,V}
     i0 = L.islack
     Φ = L.Φ
 
@@ -73,7 +68,7 @@ function compute_flow!(pfc, pf0::Vector, L::LazyLODF{SM,V,<:FullPTDF}, br::Branc
     return pfc
 end
 
-function compute_flow!(pfc, pf0::Vector, L::LazyLODF{SM,V,<:LazyPTDF}, br::Branch) where{SM,V}
+function compute_flow!(pfc, pf0::Vector, L::LazyLODF{SM,V,<:LazyPTDF}, br::Branch) where {SM,V}
     i0 = L.islack
     Φ = L.Φ
 
@@ -87,9 +82,9 @@ function compute_flow!(pfc, pf0::Vector, L::LazyLODF{SM,V,<:LazyPTDF}, br::Branc
     ak[j] = -1
 
     # Solve linear system
-    ξ  = -(Φ.F \ ak)        # Lazy PTDF factorizes -(AᵀBA), so we need to negate
-                            # TODO: since `a` only has two non-zeros, 
-                            #   (Y⁻¹ * a) is just combining two columns of Y⁻¹.
+    ξ = -(Φ.F \ ak)        # Lazy PTDF factorizes -(AᵀBA), so we need to negate
+    # TODO: since `a` only has two non-zeros, 
+    #   (Y⁻¹ * a) is just combining two columns of Y⁻¹.
     ξ[i0] = 0               # slack bus has zero phase angle
 
     # Compute post-update phase angles via SWM formula

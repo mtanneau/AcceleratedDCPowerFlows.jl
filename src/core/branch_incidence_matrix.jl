@@ -15,6 +15,8 @@ struct BranchIncidenceMatrix{V}
     N::Int
     E::Int
 
+    # Two Vector{Int} of length `E`
+    # listing each branch's "from" and "to" bus
     bus_fr::V
     bus_to::V
 end
@@ -46,7 +48,7 @@ function branch_incidence_matrix(backend::KA.Backend, network::Network)
     # Build on host (CPU)...
     bus_fr_host = [br.bus_fr for br in network.branches]
     bus_to_host = [br.bus_to for br in network.branches]
-    
+
     # ... then transfer to device (typically GPU)
     bus_fr_dev = KA.allocate(backend, eltype(bus_fr_host), (E,))
     bus_to_dev = KA.allocate(backend, eltype(bus_fr_host), (E,))
@@ -56,12 +58,16 @@ function branch_incidence_matrix(backend::KA.Backend, network::Network)
     return BranchIncidenceMatrix(N, E, bus_fr_dev, bus_to_dev)
 end
 
-branch_incidence_matrix(network::Network) = branch_incidence_matrix(default_backend(), network)
+function branch_incidence_matrix(network::Network)
+    return branch_incidence_matrix(default_backend(), network)
+end
 
 SparseArrays.sparse(A::BranchIncidenceMatrix) = _sparse(KA.get_backend(A), A)
 
 function _sparse(backend::KA.Backend, ::BranchIncidenceMatrix)
-    error("Sparse conversion of branch incidence matrix is not supported on backend $(backend)")
+    return error(
+        "Sparse conversion of branch incidence matrix is not supported on backend $(backend)",
+    )
 end
 
 function _sparse(::KA.CPU, A::BranchIncidenceMatrix)
@@ -107,7 +113,12 @@ function LinearAlgebra.mul!(y::AbstractVecOrMat, A::BranchIncidenceMatrix, x::Ab
 end
 
 # Fallback implementation using KA
-function _unsafe_mul!(backend::KA.Backend, y::AbstractVecOrMat, A::BranchIncidenceMatrix, x::AbstractVecOrMat)
+function _unsafe_mul!(
+    backend::KA.Backend,
+    y::AbstractVecOrMat,
+    A::BranchIncidenceMatrix,
+    x::AbstractVecOrMat,
+)
     backend === KA.get_backend(A) || error("backend ≠ KA.get_backend(A)")
     E = size(y, 1)
     K = size(y, 2)
@@ -123,7 +134,7 @@ function _unsafe_mul!(backend::KA.Backend, y::AbstractVecOrMat, A::BranchInciden
     # `ndrange` will be (E, 1) if y is a Vector
     #                or (E, K) if y is a Matrix
     # This ensures that indexing is correct within the kernel 
-    kernel!(y, A.bus_fr, A.bus_to, x, ndrange=(E, K))
+    kernel!(y, A.bus_fr, A.bus_to, x; ndrange=(E, K))
     synchronize(backend)
 
     return y
@@ -140,7 +151,7 @@ function _unsafe_mul!(::KA.CPU, y::AbstractVecOrMat, A::BranchIncidenceMatrix, x
         for e in 1:E
             i = A.bus_fr[e]
             j = A.bus_to[e]
-            y[e,k] = x[i,k] - x[j,k]
+            y[e, k] = x[i, k] - x[j, k]
         end
     end
     return y

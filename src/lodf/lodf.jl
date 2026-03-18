@@ -1,10 +1,6 @@
 abstract type AbstractLODF end
 
-function lodf(network::Network;
-    backend=default_backend(),
-    lodf_type=:lazy,
-    kwargs...
-)
+function lodf(network::Network; backend=default_backend(), lodf_type=:lazy, kwargs...)
     if lodf_type == :full
         return full_lodf(backend, network; kwargs...)
     elseif lodf_type == :lazy

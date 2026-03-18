@@ -12,10 +12,7 @@ abstract type AbstractPTDF end
     Only `:full` and `:lazy` are supported.
 * Other key-word arguments are passed through to the underlying PTDF constructor.
 """
-function ptdf(backend::KA.Backend, network::Network;
-    ptdf_type=:lazy,
-    kwargs...
-)
+function ptdf(backend::KA.Backend, network::Network; ptdf_type=:lazy, kwargs...)
     if ptdf_type == :full
         return full_ptdf(backend, network; kwargs...)
     elseif ptdf_type == :lazy

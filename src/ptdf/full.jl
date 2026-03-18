@@ -8,14 +8,16 @@ struct FullPTDF{D,TA,V} <: AbstractPTDF
     E::Int  # number of branches
 
     Yinv::D  # Inverse of admittance matrix (dense)
-             # Note: we actually store (-Y)⁻¹
+    # Note: we actually store (-Y)⁻¹
     A::TA    # branch incidence matrix (either sparse array or specialized type)
     b::V     # branch susceptances (negated)
 end
 
 KA.get_backend(M::FullPTDF) = KA.get_backend(M.Yinv)
 
-full_ptdf(network::Network; kwargs...) = full_ptdf(default_backend(), network; kwargs...)
+function full_ptdf(network::Network; kwargs...)
+    return full_ptdf(default_backend(), network; kwargs...)
+end
 
 function full_ptdf(bkd::KA.CPU, network::Network; linear_solver=:auto)
     N = num_buses(network)
@@ -71,7 +73,7 @@ end
 function compute_flow!(pf, pg, Φ::FullPTDF, θ)
     # TODO: dimension checks
     mul!(θ, Φ.Yinv, pg)
-    
+
     # Note: if `A` is stored as a SparseMatrix, then it's likely
     #      more efficient to store `(B*A)` directly
     # Separating the product as `B * (A * θ)` is faster with a specialized A*θ 
