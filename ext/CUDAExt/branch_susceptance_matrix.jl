@@ -12,7 +12,8 @@ function APF._sparse(::CUDA.CUDABackend, A::APF.BranchSusceptanceMatrix)
     end
 
     # For simplicity, we move to CPU, build a CSC on CPU, then back to GPU
-    A_host = APF.BranchSusceptanceMatrix(A.N, A.E, collect(A.bus_fr), collect(A.bus_to), collect(A.br_b))
+    A_host =
+        APF.BranchSusceptanceMatrix(A.N, A.E, collect(A.bus_fr), collect(A.bus_to), collect(A.br_b))
     A_host_csc = sparse(A_host)
 
     return CUDA.CUSPARSE.CuSparseMatrixCSR(A_host_csc)
@@ -33,11 +34,17 @@ function _mul_branchSusceptanceMatrix_kernel!(y, bus_fr, bus_to, br_b, x)
     return nothing
 end
 
-function APF._unsafe_mul!(::CUDA.CUDABackend, y::CUDA.CuVecOrMat, A::APF.BranchSusceptanceMatrix, x::CUDA.CuVecOrMat)
+function APF._unsafe_mul!(
+    ::CUDA.CUDABackend,
+    y::CUDA.CuVecOrMat,
+    A::APF.BranchSusceptanceMatrix,
+    x::CUDA.CuVecOrMat,
+)
     E, N = size(A)
     K = size(y, 2)
-    
-    kernel = @cuda launch=false _mul_branchSusceptanceMatrix_kernel!(y, A.bus_fr, A.bus_to, A.br_b, x)
+
+    kernel =
+        @cuda launch=false _mul_branchSusceptanceMatrix_kernel!(y, A.bus_fr, A.bus_to, A.br_b, x)
     # Set gridDim and block size
     threads = (16, min(16, max(1, nextpow(2, K))))
     blocks = (cld(E, threads[1]), cld(K, threads[2]))

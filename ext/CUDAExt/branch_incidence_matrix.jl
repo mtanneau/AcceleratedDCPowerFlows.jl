@@ -33,10 +33,15 @@ function _mul_branchIncidenceMatrix_kernel!(y, bus_fr, bus_to, x)
     return nothing
 end
 
-function APF._unsafe_mul!(::CUDA.CUDABackend, y::CUDA.CuVecOrMat, A::APF.BranchIncidenceMatrix{<:CuArray}, x::CUDA.CuVecOrMat)
+function APF._unsafe_mul!(
+    ::CUDA.CUDABackend,
+    y::CUDA.CuVecOrMat,
+    A::APF.BranchIncidenceMatrix{<:CuArray},
+    x::CUDA.CuVecOrMat,
+)
     E, N = size(A)
     K = size(y, 2)
-    
+
     kernel = @cuda launch=false _mul_branchIncidenceMatrix_kernel!(y, A.bus_fr, A.bus_to, x)
     # Set gridDim and block size
     threads = (16, min(16, max(1, nextpow(2, K))))

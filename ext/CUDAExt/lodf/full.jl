@@ -37,12 +37,7 @@ function APF.full_lodf(
     return APF.FullLODF(N, E, M)
 end
 
-function APF.compute_flow!(
-    pfc::CUDA.CuVector,
-    pf0::CUDA.CuVector,
-    L::APF.FullLODF,
-    br::APF.Branch,
-)
+function APF.compute_flow!(pfc::CUDA.CuVector, pf0::CUDA.CuVector, L::APF.FullLODF, br::APF.Branch)
     c = br.index
     copyto!(pfc, pf0)
     pfc .+= view(L.matrix, :, c) .* view(pf0, c:c)

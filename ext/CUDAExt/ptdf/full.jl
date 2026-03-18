@@ -1,8 +1,4 @@
-function APF.full_ptdf(
-    backend::CUDA.CUDABackend,
-    network::APF.Network;
-    linear_solver=:auto,
-)
+function APF.full_ptdf(backend::CUDA.CUDABackend, network::APF.Network; linear_solver=:auto)
     N = APF.num_buses(network)
     E = APF.num_branches(network)
     islack = network.slack_bus_index
@@ -17,7 +13,7 @@ function APF.full_ptdf(
     Y_cpu[:, islack] .= 0.0
     Y_cpu[islack, islack] = 1.0
     Y_gpu = CUDA.CUSPARSE.CuSparseMatrixCSR(Y_cpu)
-    
+
     if (linear_solver == :auto) || (linear_solver == :CUDSS)
         # All good, we'll use CUDSS
     else
@@ -29,7 +25,7 @@ function APF.full_ptdf(
     F = LinearAlgebra.ldlt(Y_gpu)
     I_gpu = CuMatrix(1.0I, N, N)
     Yinv = F \ I_gpu
-    
+
     # Zero out slack bus row
     Yinv[islack, :] .= 0
 
