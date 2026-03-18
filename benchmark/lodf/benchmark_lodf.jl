@@ -19,50 +19,72 @@ PM.silence()
 
 include(joinpath(@__DIR__, "..", "commons.jl"))
 
+const LODF_TYPES = [:full, :lazy]
 const PTDF_TYPES = [:full, :lazy]
-const LINEAR_SOLVERS = Dict("cpu" => [:SuiteSparse, :KLU], "cuda" => [:CUDSS])
-const RHS_WIDTHS = [96]
+const LINEAR_SOLVERS = Dict("cpu" => [:KLU], "cuda" => [:CUDSS])
+const CONTINGENCY_SAMPLES = 96
 
 """
-    benchmark_ptdf_constructor(backend, network, ptdf_type, linear_solver)
+    benchmark_lodf_constructor(backend, network, lodf_type, ptdf_type, linear_solver)
 
-Benchmark PTDF construction for one `(backend, ptdf_type, linear_solver)`
+Benchmark LODF construction for one `(backend, lodf_type, ptdf_type, linear_solver)`
 configuration on `network`.
 
 Returns a `BenchmarkTools.Trial`.
 """
-function benchmark_ptdf_constructor(
+function benchmark_lodf_constructor(
     backend::KA.Backend,
     network::APF.Network,
+    lodf_type::Symbol,
     ptdf_type::Symbol,
     linear_solver::Symbol,
 )
     bres = @benchmark begin
-        APF.ptdf($backend, $network; ptdf_type=($(ptdf_type)), linear_solver=($(linear_solver)));
-        KA.synchronize($backend);
+        APF.lodf(
+            $network;
+            backend=($backend),
+            lodf_type=($lodf_type),
+            ptdf_type=($ptdf_type),
+            linear_solver=($linear_solver),
+        )
+        KA.synchronize($backend)
     end
 
     return bres
 end
 
-"""
-    benchmark_ptdf_matprod(P, k)
+function _branch_samples(network::APF.Network, num_samples::Int)
+    is_bridge = APF.find_bridges(network)
+    candidates = [network.branches[i] for i in eachindex(network.branches) if !is_bridge[i]]
 
-Benchmark `compute_flow!` using PTDF object `P` and an `N x k` injection batch,
-where `N` is the number of buses in `P`.
+    if isempty(candidates)
+        return APF.Branch[]
+    end
+
+    n = length(candidates)
+    return [candidates[mod1(i, n)] for i in 1:num_samples]
+end
+
+"""
+    benchmark_lodf_single_contingency(L, pf0, samples)
+
+Benchmark post-contingency flow computation for the pre-built LODF object `L`
+using a list of outage branches `samples`.
 
 Returns a `BenchmarkTools.Trial`.
 """
-function benchmark_ptdf_matprod(P::APF.AbstractPTDF, k::Int)
-    backend = KA.get_backend(P)
-    N = P.N
-    E = P.E
-
-    p = KA.allocate(backend, Float64, (N, k))
-    f = KA.allocate(backend, Float64, (E, k))
+function benchmark_lodf_single_contingency(
+    L::APF.AbstractLODF,
+    pf0::AbstractVector,
+    samples::Vector{APF.Branch},
+)
+    backend = KA.get_backend(L)
+    pfc = KA.allocate(backend, eltype(pf0), length(pf0))
 
     bres = @benchmark begin
-        APF.compute_flow!($f, $p, $P)
+        for br in $samples
+            APF.compute_flow!($pfc, $pf0, $L, br)
+        end
         KA.synchronize($backend)
     end
 
@@ -84,10 +106,11 @@ function new_results_table()
         backend=String[],
         device=String[],
         blas_threads=Int[],
+        lodf_type=String[],
         ptdf_type=String[],
         linear_solver=String[],
         operation=String[],
-        rhs_width=Int[],
+        contingency_samples=Int[],
         min_time_ms=Float64[],
         median_time_ms=Float64[],
         mean_time_ms=Float64[],
@@ -100,10 +123,11 @@ function push_trial_row!(
     df::DataFrame,
     network::APF.Network,
     backend::KA.Backend,
+    lodf_type::Symbol,
     ptdf_type::Symbol,
     solver::Symbol,
     operation::String,
-    rhs_width::Int,
+    contingency_samples::Int,
     trial,
 )
     return push!(
@@ -116,10 +140,11 @@ function push_trial_row!(
             backend_name(backend),
             device_name(backend),
             BLAS.get_num_threads(),
+            string(lodf_type),
             string(ptdf_type),
             string(solver),
             operation,
-            rhs_width,
+            contingency_samples,
             Float64(minimum(trial.times)) / 1e6,
             Float64(median(trial.times)) / 1e6,
             Float64(mean(trial.times)) / 1e6,
@@ -130,12 +155,12 @@ function push_trial_row!(
 end
 
 """
-    benchmark_ptdf(network; backends=DEFAULT_BACKENDS)
+    benchmark_lodf(network; backends=DEFAULT_BACKENDS)
 
-Run PTDF construction and `compute_flow!` benchmarks for all configured PTDF
-types and linear solvers on `network` and return the result table.
+Run LODF construction and single-contingency `compute_flow!` benchmarks for all
+configured LODF types, PTDF types, and linear solvers on `network`.
 """
-function benchmark_ptdf(
+function benchmark_lodf(
     network::APF.Network;
     backends=DEFAULT_BACKENDS,
     memory_limit_gb=_max_memory_estimate_gb(),
@@ -145,32 +170,29 @@ function benchmark_ptdf(
     )
 
     df = new_results_table()
+    E = APF.num_branches(network)
 
     memory_warning_printed = false
 
     for backend in backends
         bname = backend_name(backend)
 
-        # Check if CUDA is functional, skip if not
         if isa(backend, CUDA.CUDABackend) && !CUDA.functional()
             println("CUDA is not functional; skipping CUDA backend benchmarks.")
             continue
         end
 
-        for ptdf_type in PTDF_TYPES
-            # Skip full PTDF if size is too big
-            if ptdf_type == :full
-                N = APF.num_buses(network)
-                E = APF.num_branches(network)
-                _full_ptdf_mem_estimate_gb = N*N*sizeof(one(Float64)) / (1024^3)
+        for lodf_type in LODF_TYPES
+            if lodf_type == :full
+                _full_lodf_mem_estimate_gb = E * E * sizeof(one(Float64)) / (1024^3)
                 _sys_ram_gb = round(Sys.total_memory() / (1024^3); digits=1)
-                if _full_ptdf_mem_estimate_gb > memory_limit_gb
+                if _full_lodf_mem_estimate_gb > memory_limit_gb
                     if memory_warning_printed
-                        println("Skipping full PTDF benchmark for case $(network.case_name).")
+                        println("Skipping full LODF benchmark for case $(network.case_name).")
                     else
                         println(
-                            """Skipping full PTDF benchmark for case $(network.case_name).
-                    An N×N matrix would require ~$(round(_full_ptdf_mem_estimate_gb, digits=1))GB of memory,
+                            """Skipping full LODF benchmark for case $(network.case_name).
+                    An E×E matrix would require ~$(round(_full_lodf_mem_estimate_gb, digits=1))GB of memory,
                     which exceeds the current limit of $(memory_limit_gb)GB.
 
                     To increase this tolerance, set `memory_limit_gb` to a higher threshold.
@@ -183,34 +205,53 @@ function benchmark_ptdf(
                 end
             end
 
-            for solver in LINEAR_SOLVERS[bname]
-                println("  backend=$(bname) ptdf_type=$(ptdf_type) solver=$(solver)")
+            ptdf_types = lodf_type == :lazy ? PTDF_TYPES : [:none]
+            samples = _branch_samples(network, CONTINGENCY_SAMPLES)
 
-                constructor_trial = benchmark_ptdf_constructor(backend, network, ptdf_type, solver)
-                push_trial_row!(
-                    df,
-                    network,
-                    backend,
-                    ptdf_type,
-                    solver,
-                    "construct",
-                    0,
-                    constructor_trial,
-                )
+            for ptdf_type in ptdf_types
+                for solver in LINEAR_SOLVERS[bname]
+                    println(
+                        "  backend=$(bname) lodf_type=$(lodf_type) ptdf_type=$(ptdf_type) solver=$(solver)",
+                    )
 
-                phi = APF.ptdf(backend, network; ptdf_type=ptdf_type, linear_solver=solver)
+                    constructor_trial =
+                        benchmark_lodf_constructor(backend, network, lodf_type, ptdf_type, solver)
 
-                for k in RHS_WIDTHS
-                    trial = benchmark_ptdf_matprod(phi, k)
                     push_trial_row!(
                         df,
                         network,
                         backend,
+                        lodf_type,
                         ptdf_type,
                         solver,
-                        "compute_flow",
-                        k,
-                        trial,
+                        "construct",
+                        0,
+                        constructor_trial,
+                    )
+
+                    if isempty(samples)
+                        println(
+                            "No non-bridge branches are available in case $(network.case_name); skipping single-contingency benchmarks.",
+                        )
+                        continue
+                    end
+
+                    L = build_lodf(backend, network, lodf_type, ptdf_type, solver)
+                    pf0 = KA.allocate(backend, Float64, E)
+                    fill!(pf0, one(eltype(pf0)))
+
+                    contingency_trial = benchmark_lodf_single_contingency(L, pf0, samples)
+
+                    push_trial_row!(
+                        df,
+                        network,
+                        backend,
+                        lodf_type,
+                        ptdf_type,
+                        solver,
+                        "single_contingency",
+                        length(samples),
+                        contingency_trial,
                     )
                 end
             end
@@ -223,12 +264,11 @@ end
 """
     run_benchmark(; force=false, cases=PGLIB_BENCHMARK_CASES, export_path="")
 
-Run PTDF benchmarks across all `cases` and return one concatenated result
+Run LODF benchmarks across all `cases` and return one concatenated result
 `DataFrame`.
 
 Notes:
-- `force` and `export_path` are currently reserved for future export/overwrite
-  behavior and are not yet used.
+- `force` and `export_path` have identical behavior to the PTDF benchmark driver.
 """
 function run_benchmark(;
     force=false,
@@ -242,17 +282,14 @@ function run_benchmark(;
 
     D = []
     for case in cases
-        # If result file already exists, skip benchmark unless `force` is set to true
         fcsv_path = joinpath(export_path, case * ".csv")
         if isfile(fcsv_path) && !force
-            # Load existing CSV and move to next case
             println("Reading existing CSV result file for case $(case)")
             df = CSV.read(fcsv_path, DataFrame)
             push!(D, df)
             continue
         end
 
-        # Load casefile, skip if any issue is encountered
         network = try
             data = PM.make_basic_network(pglib(case))
             APF.from_power_models(data)
@@ -261,8 +298,7 @@ function run_benchmark(;
             continue
         end
 
-        # Run the actual benchmark
-        df = benchmark_ptdf(network)
+        df = benchmark_lodf(network)
         push!(D, df)
 
         if !skip_export
@@ -270,9 +306,11 @@ function run_benchmark(;
         end
     end
 
-    # Concatenate all results
-    df_all = reduce(vcat, D)
+    if isempty(D)
+        return new_results_table()
+    end
 
+    df_all = reduce(vcat, D)
     return df_all
 end
 
