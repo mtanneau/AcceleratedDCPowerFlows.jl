@@ -10,7 +10,7 @@ function test_bridges()
     # ... corresponding to branch (7 => 8)
     k = argmax(b)
     @test k == 14
-    
+
     br = network.branches[k]
     @test br.bus_fr == 7
     @test br.bus_to == 8

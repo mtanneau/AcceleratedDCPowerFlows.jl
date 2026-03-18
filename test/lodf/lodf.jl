@@ -1,7 +1,6 @@
 include("full.jl")
 include("lazy.jl")
 
-
 function test_lodf_entry_points()
     data = PM.make_basic_network(pglib("pglib_opf_case14_ieee"))
     network = APF.from_power_models(data)

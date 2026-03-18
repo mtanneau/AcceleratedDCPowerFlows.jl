@@ -19,7 +19,7 @@ function test_full_ptdf_auto_solver()
     # Test that :auto solver option works
     data = PM.make_basic_network(pglib("pglib_opf_case14_ieee"))
     network = APF.from_power_models(data)
-    
+
     Φ_gpu = APF.ptdf(CUDA.CUDABackend(), network; ptdf_type=:full, linear_solver=:auto)
     @test isa(Φ_gpu, APF.FullPTDF)
     @test KA.get_backend(Φ_gpu) isa CUDA.CUDABackend

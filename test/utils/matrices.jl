@@ -134,7 +134,7 @@ function _test_matrix_equivalence(A, A_ref; test_generic_kernel=false)
             @testset "matvec" begin
                 invoke(
                     APF._unsafe_mul!,
-                    Tuple{KA.Backend, AbstractVecOrMat, typeof(A), AbstractVecOrMat},
+                    Tuple{KA.Backend,AbstractVecOrMat,typeof(A),AbstractVecOrMat},
                     backend,
                     y,
                     A,
@@ -146,7 +146,7 @@ function _test_matrix_equivalence(A, A_ref; test_generic_kernel=false)
             @testset "matmat" begin
                 invoke(
                     APF._unsafe_mul!,
-                    Tuple{KA.Backend, AbstractVecOrMat, typeof(A), AbstractVecOrMat},
+                    Tuple{KA.Backend,AbstractVecOrMat,typeof(A),AbstractVecOrMat},
                     backend,
                     Y,
                     A,

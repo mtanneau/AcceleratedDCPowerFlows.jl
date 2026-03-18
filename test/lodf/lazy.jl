@@ -30,7 +30,7 @@ function _test_lazy_lodf(; ptdf_type)
         # Re-compute power flows
         Φk = PM.calc_basic_ptdf_matrix(data)
         pf_pm = Φk * p
-        
+
         APF.compute_flow!(pf_fp, pf0, L, network.branches[k])
 
         @test isapprox(pf_pm, pf_fp, atol=1e-6)

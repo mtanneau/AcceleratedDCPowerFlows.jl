@@ -30,7 +30,7 @@ function _test_ptdf_matrix(Φ::APF.AbstractPTDF, Φ_ref; atol=1e-6, batch_size=4
         p_dev = KA.allocate(backend, Float64, (N,))
         copyto!(p_dev, p)
         f_dev = KA.allocate(backend, Float64, (E,))
-        copyto!(f_dev, randn(E,))
+        copyto!(f_dev, randn(E))
 
         f_res = APF.compute_flow!(f_dev, p_dev, Φ)
         @test f_res === f_dev
@@ -41,10 +41,10 @@ function _test_ptdf_matrix(Φ::APF.AbstractPTDF, Φ_ref; atol=1e-6, batch_size=4
         P = randn(N, batch_size)
         F_ref = Φ_ref * P
 
-        P_dev = KA.allocate(backend, Float64, (N,batch_size))
+        P_dev = KA.allocate(backend, Float64, (N, batch_size))
         copyto!(P_dev, P)
-        F_dev = KA.allocate(backend, Float64, (E,batch_size))
-        copyto!(F_dev, randn(E,))
+        F_dev = KA.allocate(backend, Float64, (E, batch_size))
+        copyto!(F_dev, randn(E))
 
         F_res = APF.compute_flow!(F_dev, P_dev, Φ)
         @test F_res === F_dev
