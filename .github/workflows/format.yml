@@ -1,14 +1,31 @@
-name: Format suggestions
+name: format-check
 on:
+  push:
+    branches:
+      - master
+      - release-*
   pull_request:
-    # this argument is not required if you don't use the `suggestion-label` input
-    types: [ opened, reopened, synchronize, labeled, unlabeled ]
+    types: [opened, synchronize, reopened]
 jobs:
-  code-style:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: julia-actions/julia-format@v4
+      - uses: julia-actions/setup-julia@latest
         with:
-          version: '1' # Set `version` to '1.0.54' if you need to use JuliaFormatter.jl v1.0.54 (default: '1')
-          suggestion-label: 'format-suggest' # Leave this unset or empty to show suggestions for all PRs
-          paths: 'src/, test/, benchmark/, ext/' # Leave this unset to format every file
+          version: '1'
+      - uses: actions/checkout@v6
+      - name: Format check
+        shell: julia --color=yes {0}
+        run: |
+          using Pkg
+          # If you update the version, also update the style guide docs.
+          Pkg.add(PackageSpec(name="JuliaFormatter", version="2"))
+          using JuliaFormatter
+          format("."; verbose = true)
+          out = String(read(Cmd(`git diff`)))
+          if isempty(out)
+              exit(0)
+          end
+          @error "Some files have not been formatted !!!"
+          write(stdout, out)
+          exit(1)

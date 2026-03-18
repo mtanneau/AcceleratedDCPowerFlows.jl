@@ -8,3 +8,4 @@ remove_extra_newlines = true
 separate_kwargs_with_semicolon = true
 short_to_long_function_def = true
 whitespace_in_kwargs = false
+ignore = ["exp"]
