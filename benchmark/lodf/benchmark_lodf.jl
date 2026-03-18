@@ -185,8 +185,7 @@ function benchmark_lodf(
 
     df = new_results_table()
     E = APF.num_branches(network)
-
-    memory_warning_printed = false
+    N = APF.num_buses(network)
 
     for backend in backends
         bname = backend_name(backend)
@@ -198,31 +197,23 @@ function benchmark_lodf(
 
         for lodf_type in LODF_TYPES
             if lodf_type == :full
-                _full_lodf_mem_estimate_gb = E * E * sizeof(one(Float64)) / (1024^3)
-                _sys_ram_gb = round(Sys.total_memory() / (1024^3); digits=1)
-                if _full_lodf_mem_estimate_gb > memory_limit_gb
-                    if memory_warning_printed
-                        println("Skipping full LODF benchmark for case $(network.case_name).")
-                    else
-                        println(
-                            """Skipping full LODF benchmark for case $(network.case_name).
-                    An E×E matrix would require ~$(round(_full_lodf_mem_estimate_gb, digits=1))GB of memory,
-                    which exceeds the current limit of $(memory_limit_gb)GB.
-
-                    To increase this tolerance, set `memory_limit_gb` to a higher threshold.
-                    FYI, your system has $(_sys_ram_gb)GB of RAM, and it's recommended to not exceed 50% of that threshold.
-                    """,
-                        )
-                        memory_warning_printed = true
-                    end
+                if !_check_memory(E*E, Float64; memory_limit_gb)
+                    println("Skipping trial as full LODF would require too much memory")
                     continue
                 end
             end
 
-            ptdf_types = lodf_type == :lazy ? PTDF_TYPES : [:none]
+            ptdf_types = lodf_type == :lazy ? PTDF_TYPES : [:auto]
             samples = _branch_samples(network, CONTINGENCY_SAMPLES)
 
             for ptdf_type in ptdf_types
+                if ptdf_type == :full
+                    if !_check_memory(N*N, Float64; memory_limit_gb)
+                        println("Skipping trial as full PTDF would require too much memory")
+                        continue
+                    end
+                end
+
                 for solver in LINEAR_SOLVERS[bname]
                     println(
                         "  backend=$(bname) lodf_type=$(lodf_type) ptdf_type=$(ptdf_type) solver=$(solver)",

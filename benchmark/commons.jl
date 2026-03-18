@@ -24,3 +24,8 @@ device_name(::CUDA.CUDABackend) = name(CUDA.device())
 function _max_memory_estimate_gb()
     return (2 ^ (floor(log2(Sys.total_memory() / (1024^3))) - 1))
 end
+
+function _check_memory(nnz, T; memory_limit_gb=_max_memory_estimate_gb())
+    mem_estimate_gb = nnz * sizeof(one(T)) / (1024^3)
+    return mem_estimate_gb <= memory_limit_gb
+end
