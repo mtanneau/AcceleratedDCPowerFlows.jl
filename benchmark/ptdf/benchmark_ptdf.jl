@@ -139,6 +139,10 @@ function push_trial_row!(df::DataFrame, network::APF.Network, backend::KA.Backen
     ))
 end
 
+function _max_memory_estimate_gb()
+    return (2 ^ (floor(log2(Sys.total_memory() / (1024^3))) - 1))
+end
+
 """
     benchmark_ptdf(network; backends=DEFAULT_BACKENDS)
 
@@ -147,16 +151,42 @@ types and linear solvers on `network` and return the result table.
 """
 function benchmark_ptdf(network::APF.Network;
     backends=DEFAULT_BACKENDS,
+    memory_limit_gb=_max_memory_estimate_gb(),
 )
 
     println("Running case=$(APF.case_name(network)) N=$(APF.num_buses(network)) E=$(APF.num_branches(network))")
 
     df = new_results_table()
 
+    memory_warning_printed = false
+
     for backend in backends
         bname = backend_name(backend)
 
         for ptdf_type in PTDF_TYPES
+            # Skip full PTDF if size is too big
+            if ptdf_type == :full
+                N = APF.num_buses(network)
+                E = APF.num_branches(network)
+                _full_ptdf_mem_estimate_gb = N*N*sizeof(one(Float64)) / (1024^3)
+                _sys_ram_gb = round(Sys.total_memory() / (1024^3), digits=1)
+                if _full_ptdf_mem_estimate_gb > memory_limit_gb
+                    if memory_warning_printed
+                        println("Skipping full PTDF benchmark for case $(network.case_name).")
+                    else
+                        println("""Skipping full PTDF benchmark for case $(network.case_name).
+                        An N×N matrix would require ~$(round(_full_ptdf_mem_estimate_gb, digits=1))GB of memory,
+                        which exceeds the current limit of $(memory_limit_gb)GB.
+
+                        To increase this tolerance, set `memory_limit_gb` to a higher threshold.
+                        FYI, your system has $(_sys_ram_gb)GB of RAM, and it's recommended to not exceed 50% of that threshold.
+                        """)
+                        memory_warning_printed = true
+                    end
+                    continue
+                end
+            end
+
             for solver in LINEAR_SOLVERS[bname]
                 println("  backend=$(bname) ptdf_type=$(ptdf_type) solver=$(solver)")
 
