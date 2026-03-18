@@ -24,6 +24,31 @@ const PTDF_TYPES = [:full, :lazy]
 const LINEAR_SOLVERS = Dict("cpu" => [:KLU], "cuda" => [:CUDSS])
 const CONTINGENCY_SAMPLES = 96
 
+function build_lodf(
+    backend::KA.Backend,
+    network::APF.Network,
+    lodf_type::Symbol,
+    ptdf_type::Symbol,
+    linear_solver::Symbol,
+)
+    if lodf_type == :lazy
+        return APF.lodf(
+            network;
+            backend=backend,
+            lodf_type=lodf_type,
+            ptdf_type=ptdf_type,
+            linear_solver=linear_solver,
+        )
+    end
+
+    return APF.lodf(
+        network;
+        backend=backend,
+        lodf_type=lodf_type,
+        linear_solver=linear_solver,
+    )
+end
+
 """
     benchmark_lodf_constructor(backend, network, lodf_type, ptdf_type, linear_solver)
 
@@ -40,13 +65,7 @@ function benchmark_lodf_constructor(
     linear_solver::Symbol,
 )
     bres = @benchmark begin
-        APF.lodf(
-            $network;
-            backend=($backend),
-            lodf_type=($lodf_type),
-            ptdf_type=($ptdf_type),
-            linear_solver=($linear_solver),
-        )
+        build_lodf($backend, $network, $lodf_type, $ptdf_type, $linear_solver)
         KA.synchronize($backend)
     end
 
