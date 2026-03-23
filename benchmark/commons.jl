@@ -11,8 +11,39 @@ const PGLIB_BENCHMARK_CASES = [
     "pglib_opf_case78484_epigrids",
 ]
 
+"""
+    load_network(case_name::String)
+
+Convenience constructor for PGLib cases.
+
+`case_name` must be a valid PGLib case name, e.g., `300_ieee` or `9241_pegase`.
+"""
+function load_network(case_name::String)
+    data = PM.make_basic_network(pglib(case_name))
+    return APF.from_power_models(data)
+end
+
 backend_name(::KA.CPU) = "cpu"
 backend_name(::CUDA.CUDABackend) = "cuda"
+
+"""
+    select_backend(backend_name::String)
+
+Select `KernelAbstractions` backend. Only supports `"cpu"` and `"cuda"` as input
+"""
+function select_backend(backend_name::String)
+    if lowercase(backend_name) == "cpu"
+        return KA.CPU()
+    elseif lowercase(backend_name) == "cuda"
+        if CUDA.functional()
+            return CUDA.CUDABackend()
+        else
+            error("CUDA backend requested but CUDA is not functional")
+        end
+    end
+
+    return error("Unsupported backend: $(backend_name)")
+end
 
 device_name(::KA.CPU) = begin
     info = Sys.cpu_info()
