@@ -23,23 +23,23 @@ function parse_commandline()
     settings = ArgParseSettings()
     @add_arg_table! settings begin
         "--case_name"
-        help = "PGLib case name (example: pglib_opf_case2869_pegase)"
-        arg_type = String
-        default="pglib_opf_case9241_pegase"
+            help = "PGLib case name (example: pglib_opf_case2869_pegase)"
+            arg_type = String
+            default="pglib_opf_case9241_pegase"
         "--backend"
-        help = "Backend (i.e. device) to use. Should be CPU or CUDA"
-        arg_type = String
-        default = "cpu"
+            help = "Backend (i.e. device) to use. Should be CPU or CUDA"
+            arg_type = String
+            default = "cpu"
         range_tester = (x -> lowercase(x) in ("cpu", "cuda"))
         "--ptdf_type"
-        help = "PTDF type: full or lazy"
-        arg_type = String
-        default="lazy"
-        range_tester = (x -> lowercase(x) in ("full", "lazy"))
+            help = "PTDF type: full or lazy"
+            arg_type = String
+            default="lazy"
+            range_tester = (x -> lowercase(x) in ("full", "lazy"))
         "--linear_solver"
-        help = "Linear solver name (e.g., KLU, SuiteSparse, CUDSS). Leave unset to use default"
-        arg_type = String
-        default="auto"
+            help = "Linear solver name (e.g., KLU, SuiteSparse, CUDSS). Leave unset to use default"
+            arg_type = String
+            default="auto"
     end
 
     return parse_args(settings)
@@ -53,7 +53,7 @@ function output_path(
     linear_solver::Symbol,
     operation::String,
 )
-    root = joinpath(@__DIR__)
+    root = joinpath(@__DIR__, "prof")
     if matrix_type == "PTDF"
         fname = "$(ptdf_type)_$(backend_name_str)_$(linear_solver)_$(operation).svg"
         return joinpath(root, fname)
@@ -119,27 +119,24 @@ function main_profile_ptdf()
     parsed_args = parse_commandline()
 
     case_name = parsed_args["case_name"]
-    matrix_type = uppercase(parsed_args["matrix_type"])
     backend_name_str = lowercase(parsed_args["backend"])
     linear_solver = Symbol(parsed_args["linear_solver"])
     ptdf_type = Symbol(lowercase(parsed_args["ptdf_type"]))
-    lodf_type = Symbol(lowercase(parsed_args["lodf_type"]))
 
     backend = select_backend(backend_name_str)
     network = load_network(case_name)
 
     println(
-        "Running profile for case=$(case_name), matrix_type=$(matrix_type), backend=$(backend_name_str)",
+        "Running profile for following options:
+        * case=$(case_name)
+        * backend=$(backend_name_str)
+        * linear solver=$(linear_solver)",
     )
 
-    if matrix_type == "PTDF"
-        profile_ptdf(backend, network, ptdf_type, linear_solver)
-    else
-        profile_lodf(backend, network, lodf_type, ptdf_type, linear_solver)
-    end
+    profile_ptdf(backend, network, ptdf_type, linear_solver)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    mkpath(joinpath(@__DIR__), "prof")
+    mkpath(joinpath(@__DIR__, "prof"))
     main_profile_ptdf()
 end
