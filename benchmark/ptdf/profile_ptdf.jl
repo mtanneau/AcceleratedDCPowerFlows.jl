@@ -23,23 +23,23 @@ function parse_commandline()
     settings = ArgParseSettings()
     @add_arg_table! settings begin
         "--case_name"
-            help = "PGLib case name (example: pglib_opf_case2869_pegase)"
-            arg_type = String
-            default="pglib_opf_case9241_pegase"
+        help = "PGLib case name (example: pglib_opf_case2869_pegase)"
+        arg_type = String
+        default="pglib_opf_case9241_pegase"
         "--backend"
-            help = "Backend (i.e. device) to use. Should be CPU or CUDA"
-            arg_type = String
-            default = "cpu"
+        help = "Backend (i.e. device) to use. Should be CPU or CUDA"
+        arg_type = String
+        default = "cpu"
         range_tester = (x -> lowercase(x) in ("cpu", "cuda"))
         "--ptdf_type"
-            help = "PTDF type: full or lazy"
-            arg_type = String
-            default="lazy"
-            range_tester = (x -> lowercase(x) in ("full", "lazy"))
+        help = "PTDF type: full or lazy"
+        arg_type = String
+        default="lazy"
+        range_tester = (x -> lowercase(x) in ("full", "lazy"))
         "--linear_solver"
-            help = "Linear solver name (e.g., KLU, SuiteSparse, CUDSS). Leave unset to use default"
-            arg_type = String
-            default="auto"
+        help = "Linear solver name (e.g., KLU, SuiteSparse, CUDSS). Leave unset to use default"
+        arg_type = String
+        default="auto"
     end
 
     return parse_args(settings)
@@ -126,14 +126,12 @@ function main_profile_ptdf()
     backend = select_backend(backend_name_str)
     network = load_network(case_name)
 
-    println(
-        "Running profile for following options:
-        * case=$(case_name)
-        * backend=$(backend_name_str)
-        * linear solver=$(linear_solver)",
-    )
+    println("Running profile for following options:
+            * case=$(case_name)
+            * backend=$(backend_name_str)
+            * linear solver=$(linear_solver)")
 
-    profile_ptdf(backend, network, ptdf_type, linear_solver)
+    return profile_ptdf(backend, network, ptdf_type, linear_solver)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
