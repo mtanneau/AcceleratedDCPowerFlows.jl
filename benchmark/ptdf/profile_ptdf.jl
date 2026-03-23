@@ -140,5 +140,6 @@ function main_profile_ptdf()
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
+    mkpath(joinpath(@__DIR__), "prof")
     main_profile_ptdf()
 end
