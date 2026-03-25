@@ -1,4 +1,9 @@
-function APF.full_ptdf(backend::CUDA.CUDABackend, network::APF.Network; linear_solver=:auto)
+function APF.full_ptdf(
+    backend::CUDA.CUDABackend,
+    network::APF.Network;
+    linear_solver=:auto,
+    cache_size::Integer=APF.DEFAULT_OPERATOR_CACHE_COLS,
+)
     N = APF.num_buses(network)
     E = APF.num_branches(network)
     islack = network.slack_bus_index
@@ -29,5 +34,6 @@ function APF.full_ptdf(backend::CUDA.CUDABackend, network::APF.Network; linear_s
     # Zero out slack bus row
     Yinv[islack, :] .= 0
 
-    return APF.FullPTDF(N, E, Yinv, A, -B.br_b)
+    cache = APF.OperatorCache(backend, eltype(Yinv), N; ncols=cache_size)
+    return APF.FullPTDF(N, E, Yinv, A, -B.br_b, cache)
 end
