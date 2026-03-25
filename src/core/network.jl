@@ -33,9 +33,14 @@ struct Network
     branches::Vector{Branch}
 end
 
+case_name(network::Network) = network.case_name
 num_buses(network::Network) = length(network.buses)
 num_branches(network::Network) = length(network.branches)
-case_name(network::Network) = network.case_name
+function show(io::IO, network::Network)
+    N = num_buses(network)
+    E = num_branches(network)
+    println(io, "Power network '$(case_name(network))' with $(N) buses and $(E) branches.")
+end
 
 """
     from_power_models(pmdata::Dict)
