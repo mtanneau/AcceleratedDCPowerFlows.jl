@@ -1,6 +1,6 @@
 module AcceleratedDCPowerFlows
 
-import Base.size
+import Base: show, size
 using LinearAlgebra
 import LinearAlgebra.mul!
 using SparseArrays

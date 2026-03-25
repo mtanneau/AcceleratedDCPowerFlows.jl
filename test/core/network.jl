@@ -10,6 +10,15 @@ function test_network_conversion_from_power_models()
     # check that elements are indexed from 1 to N
     @test map(b->b.index, network.buses) == 1:length(network.buses)
     @test map(b->b.index, network.branches) == 1:length(network.branches)
+
+    # Check network pretty printing
+    msg_expected = "Power network 'pglib_opf_case118_ieee' with 118 buses and 186 branches.\n"
+    bfr = IOBuffer()
+    Base.show(bfr, network)
+    msg_actual = String(take!(bfr))
+    @test msg_actual == msg_expected
+
+    return nothing
 end
 
 @testset test_network_conversion_from_power_models()
