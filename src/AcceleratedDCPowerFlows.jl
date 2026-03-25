@@ -22,6 +22,7 @@ export from_power_models
 export ptdf, full_ptdf, lazy_ptdf
 export lodf, full_lodf, lazy_lodf
 export compute_flow!
+export OperatorCache, cache_size, resize_cache
 
 # Some global definitions
 """
@@ -33,6 +34,7 @@ default_backend() = KA.CPU()
 
 include("core/network.jl")
 include("graph/bridges.jl")
+include("utils/cache.jl")
 include("inverse_susceptance/inverse_susceptance.jl")
 include("ptdf/ptdf.jl")
 include("lodf/lodf.jl")
