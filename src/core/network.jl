@@ -39,7 +39,7 @@ num_branches(network::Network) = length(network.branches)
 function show(io::IO, network::Network)
     N = num_buses(network)
     E = num_branches(network)
-    println(io, "Power network '$(case_name(network))' with $(N) buses and $(E) branches.")
+    return println(io, "Power network '$(case_name(network))' with $(N) buses and $(E) branches.")
 end
 
 """

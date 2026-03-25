@@ -18,6 +18,7 @@ function test_network_conversion_from_power_models()
     msg_actual = String(take!(bfr))
     @test msg_actual == msg_expected
 
+    return nothing
 end
 
 @testset test_network_conversion_from_power_models()
