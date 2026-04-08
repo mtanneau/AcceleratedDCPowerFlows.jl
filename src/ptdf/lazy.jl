@@ -6,7 +6,7 @@ Lazy data structure for PTDF matrix.
 Instead of forming the (dense) PTDF matrix, this approach
     only stores a sparse factorization of 
 """
-struct LazyPTDF{TA,V,TF} <: AbstractPTDF
+struct LazyPTDF{TA,V,TF,C} <: AbstractPTDF
     N::Int  # number of buses
     E::Int  # number of branches
     islack::Int  # Index of slack bus
@@ -17,17 +17,23 @@ struct LazyPTDF{TA,V,TF} <: AbstractPTDF
     F::TF   # Factorization of Y. Must be able to solve linear systems with F \ p
     # ⚠ We use a factorization of -(AᵀBA) to support cholesky factorization when possible
     #    this is because branch susceptances are typically negative, hence AᵀBA is negative definite
-
-    # TODO: cache
+    cache::C
 end
 
 KA.get_backend(M::LazyPTDF) = KA.get_backend(M.A)
+
+get_cache(Φ::LazyPTDF) = Φ.cache
 
 function lazy_ptdf(network::Network; kwargs...)
     return lazy_ptdf(default_backend(), network; kwargs...)
 end
 
-function lazy_ptdf(bkd::KA.CPU, network::Network; linear_solver=:auto)
+function lazy_ptdf(
+    bkd::KA.CPU,
+    network::Network;
+    linear_solver=:auto,
+    cache_size::Integer=DEFAULT_OPERATOR_CACHE_COLS,
+)
     N = num_buses(network)
     E = num_branches(network)
     islack = network.slack_bus_index
@@ -57,7 +63,8 @@ function lazy_ptdf(bkd::KA.CPU, network::Network; linear_solver=:auto)
 
     F = opfact(Y)
 
-    return LazyPTDF(N, E, islack, A, b, F)
+    cache = OperatorCache(bkd, eltype(b), N; ncols=cache_size)
+    return LazyPTDF(N, E, islack, A, b, F, cache)
 end
 
 """
@@ -69,8 +76,17 @@ Namely, `pf` is computed as `pf = BA * (F \\ pg)`, where `F` is a factorization
     of (-AᵀBA), e.g., a cholesky / LDLᵀ / LU factorization.
 """
 function compute_flow!(pf, pg, Φ::LazyPTDF)
-    θ = Φ.F \ pg
-    θ[Φ.islack, :] .= 0  # slack voltage angle is zero
+    K = size(pg, 2)
+    cache = get_cache(Φ)
+    resize!(cache, K; force=false)
+    θ = view(cache, :, 1:K)
+
+    # θ will be a matrix-shaped view, but pg may be Vector-shape
+    # So we reshape `pg` to avoid any issues
+    pg = reshape(pg, (size(pg, 1), size(pg, 2)))
+
+    ldiv!(θ, Φ.F, pg)
+    θ[Φ.islack, :] .= 0
     # Recall that Φ.F is negated, and Φ.B is also negated...
     #   .. so we are doing pf = (-B) * (A * (-Y⁻¹ * pg)) ..
     #   .. and the two negations cancel out

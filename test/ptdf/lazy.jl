@@ -28,6 +28,12 @@ function _test_ptdf_lazy(data_pm)
 
         @test size(Φ.A) == (E, N)
         @test size(Φ.b) == (E,)
+        @test APF.cache_size(Φ) == APF.DEFAULT_OPERATOR_CACHE_COLS
+
+        Φ_cached = APF.ptdf(network; ptdf_type=:lazy, linear_solver=linear_solver, cache_size=3)
+        @test APF.cache_size(Φ_cached) == 3
+        APF.resize_cache(Φ_cached, 5)
+        @test APF.cache_size(Φ_cached) == 5
 
         @test KA.get_backend(Φ) == APF.default_backend()
         _test_ptdf_matrix(Φ, Φ_pm)

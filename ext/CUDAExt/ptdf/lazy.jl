@@ -1,4 +1,9 @@
-function APF.lazy_ptdf(backend::CUDA.CUDABackend, network::APF.Network; linear_solver=:auto)
+function APF.lazy_ptdf(
+    backend::CUDA.CUDABackend,
+    network::APF.Network;
+    linear_solver=:auto,
+    cache_size::Integer=APF.DEFAULT_OPERATOR_CACHE_COLS,
+)
     N = APF.num_buses(network)
     E = APF.num_branches(network)
     islack = network.slack_bus_index
@@ -27,5 +32,6 @@ function APF.lazy_ptdf(backend::CUDA.CUDABackend, network::APF.Network; linear_s
     # Form factorization using CUDSS
     F = LinearAlgebra.ldlt(Y_gpu)
 
-    return APF.LazyPTDF(N, E, islack, A, b, F)
+    cache = APF.OperatorCache(backend, eltype(b), N; ncols=cache_size)
+    return APF.LazyPTDF(N, E, islack, A, b, F, cache)
 end

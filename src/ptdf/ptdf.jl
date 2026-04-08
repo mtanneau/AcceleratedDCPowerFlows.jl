@@ -24,5 +24,21 @@ end
 
 ptdf(network::Network; kwargs...) = ptdf(default_backend(), network; kwargs...)
 
+# Common public-facing APIs
+function get_cache(::AbstractPTDF) end
+
+function cache_size(M::AbstractPTDF)
+    cache = get_cache(M)
+    return cache_size(cache)
+end
+
+"""
+    resize_cache(Φ::AbstractPTDF, ncols)
+"""
+function resize_cache(Φ::AbstractPTDF, ncols; force::Bool=false)
+    cache = get_cache(Φ)
+    return resize!(cache, ncols; force)
+end
+
 include("full.jl")
 include("lazy.jl")
